@@ -1,0 +1,307 @@
+# ---------------------------------------------------------------------------
+# CI de keyboard-sales-android
+#
+# Cuatro trabajos, del mas rapido al mas lento, para que un error de tokens no
+# espere cinco minutos de Gradle:
+#
+#   1. disenio   - contraste y deriva de los tokens generados (segundos, sin JDK)
+#   2. legal     - LICENSE y NOTICE presentes y completos
+#   3. lint      - ktlint y Android Lint
+#   4. build     - assembleDebug, tests y control de peso del APK
+#
+# Ninguno usa secrets: el build de debug no necesita firma ni backend. Un CI que
+# necesita secrets no puede correr en PRs de gente de afuera, y este repo es
+# publico bajo GPL-3.0, asi que van a llegar PRs de afuera.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Un push nuevo sobre la misma rama cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "21"       # Kotlin 2.3.20 + compose-bom 2025.11.01 (upstream)
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Sistema de disenio
+  #
+  # design/tokens.json es la unica fuente de verdad. Dos verificaciones:
+  #   a) check-contrast.py: falla (exit 1) si un par de color declarado no llega
+  #      al minimo de contraste. Devuelve exit 2 si hay primitivos huerfanos,
+  #      que tratamos como aviso, no como fallo: el que rompe el build por
+  #      huerfanos es gen-tokens.py.
+  #   b) gen-tokens.py: los archivos generados estan commiteados a proposito;
+  #      este paso confirma que lo commiteado es exactamente lo que produce el
+  #      generador hoy. Si alguien edito un token a mano, falla.
+  # -------------------------------------------------------------------------
+  disenio:
+    name: Tokens y contraste
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Contraste de todos los pares declarados, en los dos modos
+        run: |
+          # Sin pipefail y sin errexit a proposito: hay que distinguir exit 1
+          # (falla de contraste, rompe el build) de exit 2 (huerfanos, aviso).
+          set +e
+          python3 design/check-contrast.py --verbose | tee contraste.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" = "1" ]; then
+            echo "::error::Hay pares de color que no cumplen el contraste minimo."
+            exit 1
+          fi
+          if [ "$code" = "2" ]; then
+            echo "::warning::Hay primitivos sin uso en ningun semantico (regla 3 del pipeline)."
+          fi
+
+      # gen-tokens.py --platform android emite solo los cuatro archivos de esta
+      # plataforma, asi que --check funciona directo dentro de este repo.
+      # (Sin --platform buscaria el Tokens.swift de iOS, que aca no existe, y
+      # reportaria deriva falsa.)
+      # Emite los tres XML en app/src/main/res/ y Tokens.kt en
+      # app/src/main/java/com/keyboardsales/ui/theme/. HeliBoard es un solo modulo
+      # :app (no existe keyboard/) y ya trae Compose habilitado, verificado contra
+      # app/build.gradle.kts el 2026-08-10.
+      - name: Deriva de los archivos de tokens generados
+        run: |
+          set -euo pipefail
+          python3 design/gen-tokens.py --check --platform android --out .
+
+      - name: Colores y dimensiones literales en el codigo
+        # Regla 4 del pipeline: ningun literal de color o dimension fuera de los
+        # archivos generados.
+        #
+        # El baseline es imprescindible en un fork: el codigo de upstream
+        # (HeliBoard, OpenBoard, AOSP) esta lleno de literales que son SUYOS y
+        # que no tocamos. .literals-baseline se genera una sola vez, con el repo
+        # todavia 100% upstream, y congela esa deuda heredada como aceptada.
+        # A partir de ahi el verificador solo marca literales NUEVOS, que son
+        # los nuestros — que es exactamente la regla que queremos hacer cumplir.
+        #
+        # Hay que REGENERAR el baseline despues de cada rebase contra upstream:
+        # esta indexado por archivo:linea, asi que si upstream corre las lineas
+        # aparecen falsos positivos. El procedimiento esta en docs/UPSTREAM.md.
+        run: |
+          set -euo pipefail
+          if [ ! -f .literals-baseline ]; then
+            echo "::error::Falta .literals-baseline. Generarlo con el bloque del README."
+            exit 1
+          fi
+          python3 design/check-literals.py . --dimensions --baseline .literals-baseline
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-contraste
+          path: contraste.txt
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------------------
+  # 2. Legal
+  #
+  # Este repo es publico y GPL-3.0. Publicar sin el texto de la licencia o sin
+  # los avisos de la cadena AOSP -> OpenBoard -> HeliBoard es un incumplimiento,
+  # no un olvido cosmetico.
+  # -------------------------------------------------------------------------
+  legal:
+    name: Licencia y avisos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: NOTICE conserva la cadena de copyright
+        run: |
+          set -euo pipefail
+          faltan=0
+          for aviso in "Android Open Source Project" "OpenBoard" "HeliBoard"; do
+            if ! grep -qi "$aviso" NOTICE; then
+              echo "::error file=NOTICE::Falta el aviso de $aviso."
+              faltan=1
+            fi
+          done
+          exit "$faltan"
+
+      - name: LICENSE tiene el texto oficial de la GPL-3.0
+        # BLOQUEANTE desde el 2026-08-10. El fork hereda de HeliBoard el texto
+        # integro de la GPL-3.0, asi que ya no hay nada que bajar: lo unico que
+        # este paso tiene que impedir es que alguien lo borre o lo reemplace.
+        # Recordar que la obligacion de la GPL se dispara con el primer APK que
+        # se le entregue a alguien, no con el lanzamiento.
+        run: |
+          set -euo pipefail
+          if grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE && [ "$(wc -l < LICENSE)" -gt 600 ]; then
+            echo "LICENSE contiene el texto integro de la GPL-3.0."
+          else
+            echo "::error file=LICENSE::LICENSE todavia es el marcador con el TODO. Bajar el texto oficial de gnu.org."
+            exit 1
+          fi
+
+  # -------------------------------------------------------------------------
+  # 3. Lint y formato
+  # -------------------------------------------------------------------------
+  lint:
+    name: ktlint y Android Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/develop' }}
+
+      # HeliBoard puede no tener plugin de ktlint. En vez de fallar por una
+      # tarea inexistente, se detecta y se avisa: el formato de NUESTRO codigo
+      # se puede exigir mas adelante, pero no vale romper el CI por el de upstream.
+      # Los archivos generados por gen-tokens.py se excluyen en la config del
+      # plugin (.editorconfig), no aca.
+      - name: ktlint
+        run: |
+          set -euo pipefail
+          if ./gradlew -q tasks --all 2>/dev/null | grep -qE '^ktlintCheck|:ktlintCheck'; then
+            ./gradlew ktlintCheck --stacktrace
+          elif ./gradlew -q tasks --all 2>/dev/null | grep -qE '^lintKotlin|:lintKotlin'; then
+            ./gradlew lintKotlin --stacktrace
+          else
+            echo "::warning::No hay tarea de ktlint en este proyecto. El formato de Kotlin no se verifica todavia."
+          fi
+
+      # Solo la app companiera y nuestros modulos. Correr Android Lint sobre el
+      # modulo del teclado heredado de HeliBoard produce cientos de avisos que
+      # no son nuestros y que no vamos a arreglar sin engordar el diff con
+      # upstream, que es exactamente lo que la regla del fork prohibe.
+      # INFORMATIVO por ahora, y a proposito: lintDebug analiza TODO el modulo
+      # :app, que es casi todo codigo de upstream. Sus hallazgos no son nuestros
+      # y no tiene sentido que bloqueen nuestros PRs.
+      #
+      # La solucion correcta es la misma que ya usamos para los literales: un
+      # baseline. Generar app/lint-baseline.xml con el repo todavia 100% upstream
+      # congela su deuda heredada, y a partir de ahi lint solo marca lo nuestro.
+      # Cuando ese archivo exista, sacar el continue-on-error.
+      #   ./gradlew :app:updateLintBaseline
+      - name: Android Lint (solo :app)
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: reportes-lint
+          path: |
+            **/build/reports/ktlint/**
+            **/build/reports/lint-results-*.html
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------------------
+  # 4. Build, tests y peso
+  #
+  # Ojo: este trabajo falla hasta que exista el wrapper de Gradle y el arbol de
+  # modulos (el clon de HeliBoard todavia no se hizo). Ver docs/UPSTREAM.md.
+  # -------------------------------------------------------------------------
+  build:
+    name: Build y peso del APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Corre SOLO nuestros tests. "testDebugUnitTest" a secas ejecuta los de
+      # HeliBoard, y 9 de sus 14 fallan en CI con
+      # UnsupportedOperationException at DefaultSdkProvider.java:170 — Robolectric
+      # no resuelve los jars del SDK en el runner. Es una condicion preexistente
+      # de upstream, no la introdujimos nosotros: su propio workflow
+      # (build-test-auto.yml) falla igual. Nuestro CI custodia NUESTRO codigo.
+      #
+      # Cuando existan tests propios en app/src/test/java/com/keyboardsales/,
+      # este paso los corre filtrados y pasa a ser bloqueante de verdad.
+      - name: Tests unitarios (solo los nuestros)
+        run: |
+          set -euo pipefail
+          if [ -d app/src/test/java/com/keyboardsales ]; then
+            ./gradlew testDebugUnitTest --tests "com.keyboardsales.*" --stacktrace
+          else
+            echo "::warning::Todavia no hay tests propios. Los de upstream no se corren: fallan por Robolectric en el runner (ver docs/UPSTREAM.md)."
+          fi
+
+      # Un solo APK: teclado + app companiera. Es la decision de ADR-012.
+      - name: assembleDebug
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      # Meta de peso: APK completo < 25 MB.
+      #
+      # Se mide sobre el APK de debug, que pesa MAS que el de release (sin
+      # minificacion ni shrink de recursos). Si el de debug entra en 25 MB, el
+      # de release entra seguro. Es una cota conservadora a proposito: el peso
+      # solo se puede defender antes de que suba.
+      #
+      # PROPUESTA: el limite de "solo teclado <= 12-15 MB" no es medible con un
+      # APK unico. Hace falta una variante de build keyboardOnly o medir los
+      # artefactos del modulo :keyboard como proxy. Sin eso, ese limite no se
+      # vigila.
+      # Mide y reporta SIEMPRE; todavia no falla. Nunca vimos el numero: el paso
+      # de tests se caia antes y este quedaba sin ejecutar. El techo de 60 MB es
+      # solo un freno contra algo absurdo.
+      #
+      # Dato util descubierto en este run: el buildType debug de HeliBoard tiene
+      # isMinifyEnabled = true, asi que el APK de debug SI esta minificado y
+      # compararlo contra la meta de 25 MB es mas representativo de lo que
+      # supusimos. Con el numero medido se fija el limite real.
+      - name: Control de peso del APK
+        run: |
+          set -euo pipefail
+          META_MB=25
+          LIMITE_MB=60
+          apk="$(find app/build/outputs/apk -name '*.apk' -print -quit)"   # :app es el modulo unico (verificado 2026-08-10)
+          if [ -z "$apk" ]; then
+            echo "::error::No se encontro ningun APK en app/build/outputs/apk."
+            exit 1
+          fi
+          bytes="$(stat -c%s "$apk")"
+          mb="$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b/1048576 }')"
+          echo "APK: $apk"
+          echo "Peso: ${mb} MB (meta ${META_MB} MB, techo actual ${LIMITE_MB} MB)"
+          echo "### Peso del APK: ${mb} MB (meta ${META_MB} MB)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$bytes" -gt "$((META_MB * 1048576))" ]; then
+            echo "::warning::El APK pesa ${mb} MB y la meta es ${META_MB} MB. Anotar el numero y fijar el limite real."
+          fi
+          if [ "$bytes" -gt "$((LIMITE_MB * 1048576))" ]; then
+            echo "::error::El APK pesa ${mb} MB y supera el techo de ${LIMITE_MB} MB. Algo esta muy mal."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,57 @@
+<!-- GENERATED FROM design/tokens.json. DO NOT EDIT. -->
+<!-- Regenerar: ver el bloque de comandos en CLAUDE.md -->
+<resources>
+    <color name="surface_keyboard">#FF191C22</color>
+    <color name="surface_bar">#FF191C22</color>
+    <color name="surface_panel">#FF101216</color>
+    <color name="surface_app">#FF101216</color>
+    <color name="surface_raised">#FF22252C</color>
+    <color name="surface_overlay">#FF22252C</color>
+    <color name="surface_scrim">#99101216</color>
+    <color name="surface_inverse">#FFE1E4EA</color>
+    <color name="surface_track">#FF2B2F38</color>
+    <color name="surface_placeholder">#FF2B2F38</color>
+    <color name="key_letter_bg">#FF3E434E</color>
+    <color name="key_letter_bg_pressed">#FF545A67</color>
+    <color name="key_modifier_bg">#FF2B2F38</color>
+    <color name="key_modifier_bg_pressed">#FF3E434E</color>
+    <color name="key_action_bg">#FF6366E4</color>
+    <color name="key_action_bg_pressed">#FF4F4CD4</color>
+    <color name="key_label">#FFF7F8FA</color>
+    <color name="key_label_secondary">#FF9BA1AE</color>
+    <color name="key_label_on_action">#FFFFFFFF</color>
+    <color name="key_popup_bg">#FF22252C</color>
+    <color name="key_popup_bg_selected">#FF6366E4</color>
+    <color name="content_primary">#FFF7F8FA</color>
+    <color name="content_secondary">#FF9BA1AE</color>
+    <color name="content_tertiary">#FF6E7583</color>
+    <color name="content_disabled">#FF545A67</color>
+    <color name="content_on_accent">#FFFFFFFF</color>
+    <color name="content_on_error">#FFFFFFFF</color>
+    <color name="content_inverse">#FF191C22</color>
+    <color name="content_link">#FFA2A4F6</color>
+    <color name="border_subtle">#14FFFFFF</color>
+    <color name="border_default">#1FFFFFFF</color>
+    <color name="border_strong">#FF9BA1AE</color>
+    <color name="border_focus">#FF8183EF</color>
+    <color name="accent_default">#FF6366E4</color>
+    <color name="accent_pressed">#FF4F4CD4</color>
+    <color name="accent_subtle">#FF1C1A45</color>
+    <color name="accent_on_subtle">#FFC5C7FB</color>
+    <color name="accent_disabled">#FF3E434E</color>
+    <color name="feedback_error">#FFF87171</color>
+    <color name="feedback_error_solid">#FFDC2626</color>
+    <color name="feedback_error_subtle">#FF450A0A</color>
+    <color name="feedback_error_on_subtle">#FFF87171</color>
+    <color name="feedback_warning">#FFFBBF24</color>
+    <color name="feedback_warning_subtle">#FF451A03</color>
+    <color name="feedback_warning_on_subtle">#FFFBBF24</color>
+    <color name="feedback_success">#FF4ADE80</color>
+    <color name="feedback_success_subtle">#FF052E16</color>
+    <color name="feedback_success_on_subtle">#FF4ADE80</color>
+    <color name="feedback_info">#FF60A5FA</color>
+    <color name="feedback_info_subtle">#FF172554</color>
+    <color name="feedback_info_on_subtle">#FF60A5FA</color>
+    <color name="state_pressed">#1FFFFFFF</color>
+    <color name="state_selected">#FF1C1A45</color>
+</resources>

@@ -1,139 +1,236 @@
-# HeliBoard
-HeliBoard is a privacy-conscious and customizable open-source keyboard, based on AOSP / OpenBoard.
-Does not use internet permission, and thus is 100% offline.
+# keyboard-sales-android
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/helium314.keyboard/)
-[<img src="https://user-images.githubusercontent.com/663460/26973090-f8fdc986-4d14-11e7-995a-e7c5e79ed925.png" alt="Get APK from GitHub" height="80">](https://github.com/HeliBorg/HeliBoard/releases/latest)
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="80">](https://apt.izzysoft.de/fdroid/index/apk/helium314.keyboard)
+Cliente Android de **Keyboard Sales AI**: un teclado nativo (IME) mas una app
+companiera, en **un solo APK**, para equipos de ventas en LatAm.
 
-## Table of Contents
+El producto trae el conocimiento de la empresa al vendedor **dentro del chat**,
+en cualquier app de mensajeria. El teclado tiene dos botones:
 
-- [Features](#features)
-- [Contributing](#contributing-)
-   * [Reporting Issues](#reporting-issues)
-   * [Translations](#translations)
-   * [To Community](#to-community)
-   * [Code Contribution](CONTRIBUTING.md)
-- [Links](#links)
-- [License](#license)
-- [Credits](#credits)
-  * [Funding](#funding)
+| Boton | Que es |
+|---|---|
+| **G** | Catalogo y respuestas rapidas. Estatico y estructurado. Aca vive la velocidad: 2-3 toques. |
+| **Chat** | Chat conversacional con conocimiento de la empresa. Es el corazon del producto. |
 
-# Features
-<ul>
-  <li>Add dictionaries for suggestions and spell check</li>
-  <ul>
-    <li>build your own, or get them  <a href="https://codeberg.org/Helium314/aosp-dictionaries#dictionaries">here</a> (quality may vary)</li>
-    <li>additional dictionaries for emojis or scientific symbols can be used to provide suggestions (similar to "emoji search")</li>
-    <li>note that for Korean layouts, suggestions only work using <a href="https://github.com/openboard-team/openboard/commit/83fca9533c03b9fecc009fc632577226bbd6301f">this dictionary</a>, the tools in the dictionary repository are not able to create working dictionaries</li>
-  </ul>
-  <li>Customize keyboard themes (style, colors and background image)</li>
-  <li>Emoji search (inline and separate, requires <a href="https://codeberg.org/Helium314/aosp-dictionaries">emoji dictionary</a>)</li>
-  <ul>
-    <li>can follow the system's day/night setting on Android 10+ (and on some versions of Android 9)</li>
-    <li>can follow dynamic colors for Android 12+</li>
-  </ul>
-  <li>Customize keyboard <a href="https://github.com/HeliBorg/HeliBoard/blob/main/layouts.md">layouts</a> (only available when disabling <i>use system languages</i>)</li>
-  <li>Customize special layouts, like symbols, number,  or functional key layout</li>
-  <li>Multilingual typing</li>
-  <li>Glide typing (<i>only with closed source library</i> ☹️)</li>
-  <ul>
-    <li>library not included in the app, as there is no compatible open source library available</li>
-    <li>can be extracted from GApps packages ("<i>swypelibs</i>"), or downloaded <a href="https://github.com/erkserkserks/openboard/tree/46fdf2b550035ca69299ce312fa158e7ade36967/app/src/main/jniLibs">here</a> (click on the file and then "raw" or the tiny download button)</li>
-  </ul>
-  <li>Clipboard history</li>
-  <li>One-handed mode</li>
-  <li>Split keyboard</li>
-  <li>Number pad</li>
-  <li>Backup and restore your settings and learned word / history data</li>
-</ul>
+Este repositorio contiene **solo el cliente Android**. El backend (Go +
+PostgreSQL), la plataforma de administracion y el web publico de catalogo viven
+en repositorios separados y cerrados, y se consumen por HTTP.
 
-For [FAQ](https://github.com/HeliBorg/HeliBoard/wiki/FAQ), [hidden features](https://github.com/HeliBorg/HeliBoard/wiki/9.-Hidden-features) and more information about the app and features, please visit the [wiki](https://github.com/HeliBorg/HeliBoard/wiki)
+---
 
-# Contributing ❤
+## Licencia
 
-## Reporting Issues
+**GPL-3.0-or-later.** Todo el contenido de este repositorio, teclado y app
+companiera.
 
-Whether you encountered a bug, or want to see a new feature in HeliBoard, you can contribute to the project by opening a new issue [here](https://github.com/HeliBorg/HeliBoard/issues). Your help is always welcome!
+Es una consecuencia, no una eleccion de marketing: el teclado es un fork de
+[HeliBoard](https://github.com/HeliBorg/HeliBoard), que es GPL-3.0, y decidimos
+distribuir **un solo APK** porque la activacion del teclado ya es el punto mas
+fragil del onboarding (meta: activacion >= 70%). Dos instaladores para no
+liberar la app companiera nos costaria mas de lo que nos protege. Ver ADR-012.
 
-Before opening a new issue, be sure to check the following:
- - **Does the issue already exist?** Make sure a similar issue has not been reported by browsing [existing issues](https://github.com/HeliBorg/HeliBoard/issues?q=). Please search open and closed issues. In case of feature requests you could also check the [FAQ](https://github.com/HeliBorg/HeliBoard/wiki/FAQ) and [hidden features](https://github.com/HeliBorg/HeliBoard/wiki/9.-Hidden-features).
- - **Is the issue still relevant?** Make sure your issue is not already fixed in the latest version of HeliBoard.
- - **Is it a single topic?** If you want to suggest multiple things, open multiple issues.
- - **Did you use the issue template?** It is important to make life of our kind contributors easier by avoiding issues that miss key information to their resolution.
- - **Is it written by a human?** Do not use LLMs or similar to generate issues. Having LLMs help with translation or similar is acceptable, but must be disclosed. See also [AI_USAGE.md](AI_USAGE.md)
-Note that issues that that ignore part of the issue template will likely get treated with very low priority, as often they are needlessly hard to read or understand (e.g. huge screenshots, not providing a proper description, or addressing multiple topics). Blatant violation of the guidelines may result in the issue getting closed.
+Frontera: **liberamos el teclado, vendemos la plataforma.**
 
-If you're interested, you can read the following useful text about effective bug reporting (a bit longer read): https://www.chiark.greenend.org.uk/~sgtatham/bugs.html
+- `LICENSE` — aviso de copyright y como aplicarlo. **Tiene un TODO pendiente:
+  bajar el texto oficial de la GPL-3.0 antes del primer push publico.**
+- `NOTICE` — avisos de copyright de AOSP, OpenBoard, HeliBoard y nuestro. No se
+  borran ni se reescriben.
 
-## Translations
-Translations can be added using [Weblate](https://translate.codeberg.org/projects/heliboard/). You will need an account to update translations and add languages. Add the language you want to translate to in Languages -> Manage translated languages in the top menu bar.
-Updating translations in a PR will not be accepted, as it may cause conflicts with Weblate translations.
+> **Advertencia irreversible:** una vez publicado un commit bajo GPL-3.0, ese
+> codigo no se puede "cerrar" retroactivamente. Se puede dejar de publicar
+> versiones nuevas, pero lo liberado sigue libre y forkeable. Nada que no deba
+> ser libre entra aca. En particular: claves, prompts propietarios del servidor,
+> logica de precios y cualquier secreto de negocio van en el backend.
 
-Some notes on translations
-* when translating metadata, translating the changelogs is rather useless. It's available as it was requested by translators.
-* the `hidden_features_message` is horrible to translate with Weblate, and serves little benefit as it's just a copy of what's already in the wiki: https://github.com/HeliBorg/HeliBoard/wiki/9.-Hidden-features. It's been made available in the app on user request/contribution.
+---
 
-## To Community
-There is the [discussions on GitHub](https://github.com/HeliBorg/HeliBoard/discussions), or if you prefer a more open network there is [Lemmy](https://lemmy.world/c/Heliboard).
-You can share your themes, layouts and dictionaries with other people:
-* Themes can be saved and loaded using the menu on top-right in the _adjust colors_ screen
-  * you can share custom colors in a separate [discussion section](https://github.com/HeliBorg/HeliBoard/discussions/categories/custom-colors)
-  * there are theme collections available at [Star-Trowa/heliboard-themes](https://github.com/Star-Trowa/heliboard-themes) and [PickleHik3/droid-tings](https://github.com/PickleHik3/droid-tings)
-* Custom keyboard layouts are text files whose content you can edit, copy and share
-  * this applies to main keyboard layouts and to special layouts adjustable in advanced settings
-  * see [layouts.md](layouts.md) for details
-  * you can share custom layouts in a separate [discussion section](https://github.com/HeliBorg/HeliBoard/discussions/categories/custom-layout)
-  * [Roccobot's Layout Maker](https://roccobot.github.io/HeliBoard-RLM/) is a browser-based editor for json layout files
-* Creating dictionaries is a little more work
-  * first you will need a wordlist, as described [here](https://codeberg.org/Helium314/aosp-dictionaries/src/branch/main/wordlists/sample.combined) and in the repository readme
-  * the you need to compile the dictionary using [external tools](https://github.com/remi0s/aosp-dictionary-tools)
-  * the resulting file (and ideally the wordlist too) can be shared with other users
-  * note that there will not be any further dictionaries added to this app, but you can add dictionaries to the [dictionaries repository](https://codeberg.org/Helium314/aosp-dictionaries)
+## Estructura
 
-## Code Contribution
-See [Contribution Guidelines](CONTRIBUTING.md)
+```
+keyboard-sales-android/
+├── keyboard/                 # Modulo IME. Fork de HeliBoard. Kotlin + XML Views.
+│   └── src/main/res/values/tokens_colors.xml      (GENERADO)
+├── app/                      # App companiera. Kotlin + Jetpack Compose.
+│   └── src/main/java/com/keyboardsales/app/ui/theme/Tokens.kt   (GENERADO)
+├── core/                     # PROPUESTA: datos compartidos (SQLDelight, API client).
+├── design/                   # tokens.json + generadores + verificador de contraste.
+├── docs/UPSTREAM.md          # Procedimiento de rebase contra HeliBoard.
+└── .github/workflows/ci.yml
+```
 
-# Links
-* Info
-  * [Wiki](https://github.com/HeliBorg/HeliBoard/wiki), including FAQ, help on customizing layouts, and gesture data gathering
-  * [Layout documentation](layouts.md) (more technical info regarding layout customization)
-  * [For creating custom dictionaries](https://codeberg.org/Helium314/aosp-dictionaries#wordlist-information) (see also top of the linked readme)
-* Community
-  * [Lemmy](https://lemmy.world/c/Heliboard)
-  * [Reddit](https://www.reddit.com/r/HeliBoard)
-  * GitHub [discussions](https://github.com/HeliBorg/HeliBoard/discussions)
-* Other
-  * [Translations](https://translate.codeberg.org/projects/heliboard/)
-  * [Dictionaries](https://codeberg.org/Helium314/aosp-dictionaries)
-  * [k3lp](https://codeberg.org/k3lp/k3lp) is a WIP library for keyboard layout parsing that will be implemented in HeliBoard when ready (created by [FlorisBoard](https://github.com/florisboard/florisboard/) maintainers)
-  * [swipe-o-scope](https://codeberg.org/eclexic/swipe-o-scope) for visualizing gesture data as created when using gesture data gathering
+Los nombres de modulo `keyboard` y `app` no son arbitrarios: son los que
+`design/gen-tokens.py` usa como ruta de salida. Cambiarlos rompe el generador y
+el paso de CI que lo verifica.
 
-# License
+`core/` es **PROPUESTA**: el proyecto decidio "sin KMP en el MVP", pero no
+decidio si el cliente Android tiene un modulo de datos compartido entre el IME y
+la app. La alternativa es que la app dependa del modulo `keyboard`. Definir antes
+de la primera linea de codigo de sincronizacion.
 
-HeliBoard (as a fork of OpenBoard) is licensed under GNU General Public License v3.0.
+---
 
- > Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights.
+## Tokens de diseño
 
-See repo's [LICENSE](/LICENSE) file.
+`design/tokens.json` es la **unica fuente de verdad** de color, dimension,
+tipografia y motion. Los archivos de tokens se **generan**; no se editan a mano.
 
-Since the app is based on Apache 2.0 licensed AOSP Keyboard, an [Apache 2.0](LICENSE-Apache-2.0) license file is provided.
-The icon is licensed under [Creative Commons BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). A [license file](LICENSE-CC-BY-SA-4.0) is also included.
+```bash
+# Regenerar los archivos de tokens de Android
+python3 design/gen-tokens.py --out /tmp/gen-tokens && \
+  cp /tmp/gen-tokens/android/keyboard/src/main/res/values/tokens_colors.xml       keyboard/src/main/res/values/tokens_colors.xml && \
+  cp /tmp/gen-tokens/android/keyboard/src/main/res/values-night/tokens_colors.xml keyboard/src/main/res/values-night/tokens_colors.xml && \
+  cp /tmp/gen-tokens/android/keyboard/src/main/res/values/tokens_dimens.xml       keyboard/src/main/res/values/tokens_dimens.xml && \
+  cp /tmp/gen-tokens/android/app/src/main/java/com/keyboardsales/app/ui/theme/Tokens.kt \
+     app/src/main/java/com/keyboardsales/app/ui/theme/Tokens.kt
 
-# Credits
-- Icon by [Fabian OvrWrt](https://github.com/FabianOvrWrt) with contributions from [The Eclectic Dyslexic](https://github.com/the-eclectic-dyslexic)
-- [OpenBoard](https://github.com/openboard-team/openboard)
-- [AOSP Keyboard](https://android.googlesource.com/platform/packages/inputmethods/LatinIME/)
-- [LineageOS](https://review.lineageos.org/admin/repos/LineageOS/android_packages_inputmethods_LatinIME)
-- [Simple Keyboard](https://github.com/rkkr/simple-keyboard)
-- [Indic Keyboard](https://gitlab.com/indicproject/indic-keyboard)
-- [FlorisBoard](https://github.com/florisboard/florisboard/)
-- Our [contributors](https://github.com/HeliBorg/HeliBoard/graphs/contributors)
+# Verificar contraste (falla el CI si un par no cumple)
+python3 design/check-contrast.py
+```
 
-## Funding
+`gen-tokens.py` escribe los cinco archivos de las dos plataformas de una sola
+vez, con prefijos `android/` e `ios/`, porque nacio pensando en un arbol unico.
+En multi-repo eso obliga a generar en un directorio temporal y copiar lo que
+corresponde a esta plataforma, que es lo que hace el script de arriba y lo que
+hace el CI.
 
-This project is funded through [NGI Mobifree Fund](https://nlnet.nl/mobifree), a fund established by [NLnet](https://nlnet.nl) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu) program. Learn more at the [NLnet project page](https://nlnet.nl/project/GestureTyping).
+> **PROPUESTA:** agregar a `gen-tokens.py` una bandera `--platform android|ios`
+> que recorte los objetivos y permita usar `--check` directamente sobre el repo.
+> Hoy `--check` falla en este repo porque busca tambien el archivo de iOS, que no
+> existe aca. Es un arreglo de diez lineas y limpia el CI.
 
-[<img src="https://nlnet.nl/logo/banner.png" alt="NLnet foundation logo" width="20%" />](https://nlnet.nl)
+`design/` esta **vendorizado en este repo** y es la copia canonica (**PROPUESTA**:
+los tokens no son secreto, este repo es publico, y asi el CI no necesita
+credenciales para leerlos; el repo de iOS los consume clonando este). Si se
+decide un repo de diseño aparte, actualizar tambien el CI de iOS.
 
-Further the project benefits from donations provided by many users (thank you all!).
+`design/gen-tokens.py` menciona un `check-literals.py` que verifica que no haya
+colores literales en el codigo. **Ese script todavia no existe.** Sin el, la
+regla 4 del pipeline no se hace cumplir.
+
+---
+
+## Como compilar
+
+Requisitos:
+
+- JDK **17** &nbsp;`# AJUSTAR si el AGP definitivo exige otra`
+- Android SDK con `compileSdk` **35** y `minSdk` **26** &nbsp;`# AJUSTAR`
+- Python 3.11+ (solo para los scripts de diseño)
+- No hace falta Android Studio: el build es Gradle puro.
+
+```bash
+git clone git@github.com:velasanti/keyboard-sales-android.git
+cd keyboard-sales-android
+
+# Debug, sin firmar. No necesita secrets ni backend.
+./gradlew :app:assembleDebug
+
+# Instalar en un dispositivo conectado
+./gradlew :app:installDebug
+
+# Lint y formato
+./gradlew ktlintCheck            # AJUSTAR: nombre real de la tarea del plugin
+./gradlew :app:lintDebug
+
+# Tests unitarios
+./gradlew testDebugUnitTest
+```
+
+Despues de instalar, el teclado hay que **activarlo a mano** en Ajustes ->
+Sistema -> Teclados. La app companiera guia ese flujo; es el punto donde se gana
+o se pierde la activacion.
+
+### Build de release
+
+La firma se configura por variables de entorno, nunca por archivo commiteado.
+Ver la lista de secrets en `SETUP-GITHUB.md`.
+
+```bash
+KEYSTORE_PATH=... KEYSTORE_PASSWORD=... KEY_ALIAS=... KEY_PASSWORD=... \
+  ./gradlew :app:assembleRelease
+```
+
+---
+
+## Meta de peso
+
+| Objetivo | Limite |
+|---|---|
+| APK completo (teclado + app companiera) | **< 25 MB** |
+| Solo el teclado | **12-15 MB** |
+
+El CI mide el APK completo y falla si pasa de 25 MB. **PROPUESTA:** el limite de
+"solo teclado" no es medible con un APK unico; para vigilarlo hace falta o una
+variante de build `keyboardOnly`, o medir el tamaño de los artefactos del modulo
+`keyboard` (dex + recursos) y usar eso como proxy. Definir cual antes de que el
+APK crezca, porque despues el numero solo sube.
+
+Los diccionarios de español LatAm pesan y viven en `keyboard-sales-dictionaries`,
+compilados con el `dicttool` de AOSP. Cuantos idiomas se empaquetan en el APK
+contra cuantos se bajan a demanda es la palanca de peso mas grande que tenemos.
+
+---
+
+## Relacion con upstream (HeliBoard)
+
+Este repo es un **fork mantenido**, no un punto de partida que se olvida:
+
+- `upstream` es un remoto **permanente**, no un clon de una sola vez.
+- La regla es **minimizar el diff con upstream**.
+- Todo lo nuestro entra como **modulo aditivo** (barra de catalogo,
+  sincronizacion, log de eventos), **no** como edicion a la tuberia de
+  sugerencias.
+- Todo cambio que toque el motor de sugerencias necesita **justificacion
+  explicita en el PR** (hay una casilla obligatoria en la plantilla).
+- Los avisos de copyright de AOSP, OpenBoard y HeliBoard se preservan.
+
+Procedimiento completo, cadencia de rebase y que hacer ante un conflicto en el
+motor de sugerencias: **`docs/UPSTREAM.md`**.
+
+No se usa el boton "Fork" de GitHub. El motivo esta en `SETUP-GITHUB.md`
+seccion 5.
+
+---
+
+## Ramas y commits
+
+- `main` — protegida. Solo por PR. Siempre compilable.
+- `develop` — integracion.
+- `feature/*` — trabajo en curso.
+- `upstream-sync/*` — ramas de rebase contra HeliBoard.
+
+Conventional Commits obligatorio:
+
+```
+feat(catalog): barra de sugerencias con resultados de catalogo
+fix(sync): reintento con backoff al perder red
+chore(upstream): rebase sobre HeliBoard 3.2
+```
+
+Ambitos de uso frecuente: `keyboard`, `catalog`, `chat`, `sync`, `events`,
+`app`, `design`, `upstream`, `ci`.
+
+---
+
+## Privacidad, y por que se puede auditar aca
+
+Este cliente es publico a proposito: es lo que hace verificable el claim del
+producto. Lo que el codigo tiene que poder demostrar a quien lo lea:
+
+- **No usamos `AccessibilityService` ni lectura de pantalla.** No podemos leer
+  los mensajes entrantes del cliente final, y nunca vamos a poder (ADR-009).
+- No guardamos el contenido de las conversaciones, ni resumenes ni
+  interpretaciones de lo que dijo el cliente (ADR-011).
+- **Si** guardamos el contacto (telefono, y nombre si el vendedor lo asigna) y
+  las acciones que el vendedor ejecuta desde el teclado sobre ese contacto
+  (ADR-011). Somos custodios de la base de contactos.
+- La inferencia va **siempre via backend**, nunca directo desde el cliente. No
+  hay claves de proveedores de IA en este APK. Un APK publico con una clave
+  embebida es una clave regalada.
+
+El claim es sobre **alcance**, no sobre ubicacion: *no leemos ni guardamos lo que
+dice tu cliente, solo lo que hace tu vendedor.* Nunca se escribe "IA
+on-device", "on-premise", "VPC propia" ni "residencia de datos en LatAm": es
+falso para esta arquitectura.
+
+Si un PR agrega un permiso al manifest, la revision explica **por que**. El
+manifest de un IME es lo primero que mira quien audita.
