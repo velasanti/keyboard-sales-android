@@ -56,6 +56,25 @@ android {
             applicationIdSuffix = ".debug"
         }
 
+        // ---- keyboard-sales ------------------------------------------------
+        // Este producto no vende teclado multiidioma: vende catalogo. De los 18
+        // diccionarios que trae HeliBoard solo se empacan los de mercados reales.
+        // El resto se excluye del PAQUETE sin borrar el archivo del repo, para no
+        // divergir de upstream. Vale ~10.9 MB del APK (55% eran diccionarios).
+        // Se declara lo que SE EMPACA, no lo que se excluye: si un rebase agrega
+        // un idioma nuevo queda excluido solo y no hay lista que actualizar.
+        val idiomasEmpacados = listOf("es", "en-US", "pt-BR")
+        val dictsExcluidos = (file("src/main/assets/dicts").listFiles() ?: emptyArray())
+            .map { it.name }
+            .filter { it.startsWith("main_") && it.endsWith(".dict") }
+            .filterNot { nombre -> idiomasEmpacados.any { idioma -> nombre == "main_$idioma.dict" } }
+            .sorted()
+        require(dictsExcluidos.isNotEmpty()) {
+            "No se encontro ningun main_*.dict en app/src/main/assets/dicts. Si upstream " +
+            "movio los diccionarios a descarga bajo demanda, revisar docs/UPSTREAM.md " +
+            "antes de seguir: este bloque estaria empacando todos los idiomas en silencio."
+        }
+
         androidComponents.onVariants { variant: ApplicationVariant ->
             if (variant.buildType == "debug") {
                 // got a little too big for GitHub after some dependency upgrades, so we remove the largest dictionary
@@ -65,6 +84,13 @@ android {
                 variant.proguardFiles.add(project.layout.buildDirectory.file(project.buildFile.parent + "/dontoptimize.pro"))
                 variant.proguardFiles.add(project.layout.buildDirectory.file(project.buildFile.parent + "/proguard-rules.pro"))
             }
+            // keyboard-sales: reemplaza la exclusion SOLO-DEBUG de upstream por una que
+            // aplica a todos los buildTypes. dictsExcluidos ya contiene main_ro.dict, asi
+            // que es un superconjunto de lo que excluia upstream.
+            // OJO EN CADA REBASE: si upstream agrega a ignoreAssetsPatterns algo que NO sea
+            // un main_*.dict, esta asignacion lo pisa. Ver docs/UPSTREAM.md.
+            variant.androidResources.ignoreAssetsPatterns = dictsExcluidos
+
             variant.outputs.forEach { output ->
                 if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
                     output.outputFileName = "HeliBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
