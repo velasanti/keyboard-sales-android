@@ -20,11 +20,16 @@ Uso:
 import argparse
 import json
 import sys
+import xml.dom.minidom
 from pathlib import Path
 
 HEADER_SLASH = "// GENERATED FROM design/tokens.json — DO NOT EDIT\n// Regenerar: python3 design/gen-tokens.py --out .\n"
-HEADER_XML = ("<!-- GENERATED FROM design/tokens.json — DO NOT EDIT -->\n"
-              "<!-- Regenerar: python3 design/gen-tokens.py --out . -->\n")
+# OJO: la especificacion de XML PROHIBE la secuencia "--" dentro de un comentario,
+# asi que aca no se puede escribir el comando con sus flags (--out, --platform).
+# Un "--out" en esta cabecera invalida los tres XML y rompe cualquier tarea de
+# Gradle que fusione recursos. Paso de verdad el 2026-08-10.
+HEADER_XML = ("<!-- GENERATED FROM design/tokens.json. DO NOT EDIT. -->\n"
+              "<!-- Regenerar: ver el bloque de comandos en CLAUDE.md -->\n")
 
 MODES = ("light", "dark")
 
@@ -290,6 +295,20 @@ def main():
         if not targets:
             print(f"gen-tokens: no hay objetivos para la plataforma '{args.platform}'.")
             return 1
+
+    # El generador valida su propio XML antes de escribirlo. Sin esto, un comentario
+    # con "--" adentro (que la especificacion de XML prohibe) produce archivos que
+    # parecen bien y rompen cualquier tarea de Gradle que fusione recursos. Paso el
+    # 2026-08-10 y costo tres checks rojos: el generador tiene que ser incapaz de
+    # emitir XML invalido, no confiar en que nadie escriba un guion de mas.
+    for rel, content in targets.items():
+        if rel.endswith(".xml"):
+            try:
+                xml.dom.minidom.parseString(content)
+            except Exception as e:
+                print(f"gen-tokens: el XML generado para {rel} NO es valido.\n  {e}")
+                print("  Causa tipica: la secuencia '--' dentro de un comentario XML.")
+                return 1
 
     drift = []
     for rel, content in targets.items():

@@ -1,5 +1,5 @@
-<!-- GENERATED FROM design/tokens.json — DO NOT EDIT -->
-<!-- Regenerar: python3 design/gen-tokens.py --out . -->
+<!-- GENERATED FROM design/tokens.json. DO NOT EDIT. -->
+<!-- Regenerar: ver el bloque de comandos en CLAUDE.md -->
 <resources>
     <color name="surface_keyboard">#FF191C22</color>
     <color name="surface_bar">#FF191C22</color>

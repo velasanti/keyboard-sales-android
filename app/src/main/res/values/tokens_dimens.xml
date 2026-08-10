@@ -1,5 +1,5 @@
-<!-- GENERATED FROM design/tokens.json — DO NOT EDIT -->
-<!-- Regenerar: python3 design/gen-tokens.py --out . -->
+<!-- GENERATED FROM design/tokens.json. DO NOT EDIT. -->
+<!-- Regenerar: ver el bloque de comandos en CLAUDE.md -->
 <resources>
     <dimen name="spacing_0">0dp</dimen>
     <dimen name="spacing_1">4dp</dimen>
