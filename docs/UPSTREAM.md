@@ -303,3 +303,55 @@ Cualquier cuarta excepcion necesita justificacion explicita en el PR. Si la list
      | awk '/^  [^ ]+:[0-9]+/ {print $1}' > .literals-baseline
    ```
 2. **Verificar que `settings.gradle` sigue teniendo un solo modulo de aplicacion.** Si upstream parte `:app` en varios modulos, las rutas de `design/gen-tokens.py` dejan de ser validas.
+
+---
+
+## Lo que de upstream NO gateamos, y por que
+
+Nuestro CI custodia **nuestro** codigo. Un check que falla por codigo de HeliBoard no protege nada: entrena al equipo a ignorar el rojo. Estos tres casos estan acotados a proposito.
+
+### 1. Los tests de HeliBoard no se corren
+
+`./gradlew testDebugUnitTest` a secas ejecuta la suite de upstream, y **9 de sus 14 tests fallan en el runner**:
+
+```
+SubtypeTest > classMethod FAILED
+    java.lang.UnsupportedOperationException at DefaultSdkProvider.java:170
+XLinkTest · InputLogicTest · StringUtilsTest · SuggestTest — igual
+14 tests completed, 9 failed
+```
+
+`DefaultSdkProvider` es de **Robolectric** y esa excepcion es la de Robolectric no resolviendo los jars del SDK de Android en el entorno de CI. **Es una condicion preexistente de upstream, no la introdujimos nosotros:** el propio `build-test-auto.yml` de HeliBoard falla identico en este fork.
+
+Nuestro paso corre `--tests "com.keyboardsales.*"` y avisa mientras no existan tests propios. **Cuando escribamos los primeros tests** —normalizacion de busqueda, ranking, construccion del mensaje: los tres puntos donde un bug es invisible y caro— este paso pasa a ser bloqueante de verdad sin tocar nada mas.
+
+Pendiente, de prioridad baja: averiguar si los tests de upstream se pueden hacer pasar (probablemente sea version de Robolectric contra JDK 21, o prefetch de los jars). No bloquea nada nuestro.
+
+### 2. `:app:lintDebug` es informativo hasta que exista un baseline
+
+Lint analiza **todo** el modulo `:app`, que es casi todo codigo de upstream. La solucion es la misma que ya funciono con los literales: congelar la deuda heredada en un baseline.
+
+```bash
+./gradlew :app:updateLintBaseline    # genera app/lint-baseline.xml
+```
+
+Generarlo con el repo todavia 100% upstream, commitearlo, y **sacar el `continue-on-error` del paso** en `.github/workflows/ci.yml`. Desde ahi lint solo marca hallazgos nuevos, que son los nuestros. Igual que `.literals-baseline`, **hay que regenerarlo despues de cada rebase**.
+
+### 3. El workflow `build-test-auto.yml` de upstream se conserva
+
+No lo borramos: seria una cuarta excepcion a la regla de diff aditivo y agrega friccion en cada rebase. Va a aparecer en rojo en los PRs por el motivo del punto 1. **No incluirlo en los checks requeridos de la proteccion de rama.**
+
+## Que regenerar despues de cada rebase — lista completa
+
+1. **`.literals-baseline`** — indexado por `archivo:linea`; si upstream corre las lineas aparecen falsos positivos.
+   ```bash
+   python3 design/check-literals.py . --dimensions \
+     | awk '/^  [^ ]+:[0-9]+/ {print $1}' > .literals-baseline
+   ```
+2. **`app/lint-baseline.xml`**, cuando exista (punto 2 de arriba).
+3. **Los cuatro archivos de tokens**, si upstream movio algo de `app/src/main/res/`.
+   ```bash
+   python3 design/gen-tokens.py --out . --platform android
+   ```
+4. **Verificar que `settings.gradle` sigue teniendo un solo modulo de aplicacion.** Si upstream parte `:app`, las rutas de `gen-tokens.py` dejan de ser validas.
+5. **Verificar que `app/build.gradle.kts` sigue habilitando Compose.** Si upstream lo saca, `Tokens.kt` deja de compilar.
