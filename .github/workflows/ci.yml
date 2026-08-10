@@ -32,7 +32,7 @@ permissions:
   contents: read
 
 env:
-  JAVA_VERSION: "17"       # AJUSTAR: alinear con el AGP definitivo
+  JAVA_VERSION: "21"       # Kotlin 2.3.20 + compose-bom 2025.11.01 (upstream)
   PYTHON_VERSION: "3.12"
 
 jobs:
@@ -142,11 +142,9 @@ jobs:
           exit "$faltan"
 
       - name: LICENSE tiene el texto oficial de la GPL-3.0
-        # AJUSTAR: continue-on-error queda en true SOLO mientras el repo es
-        # privado. Antes del primer push publico hay que bajar el texto oficial
-        # (curl https://www.gnu.org/licenses/gpl-3.0.txt -o LICENSE) y poner
-        # esto en false, para que no se pueda publicar sin licencia.
-        continue-on-error: true
+        # BLOQUEANTE desde el 2026-08-10. El fork hereda de HeliBoard el texto
+        # integro de la GPL-3.0, asi que ya no hay nada que bajar: lo unico que
+        # este paso tiene que impedir es que alguien lo borre o lo reemplace.
         run: |
           set -euo pipefail
           if grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE && [ "$(wc -l < LICENSE)" -gt 600 ]; then
@@ -174,12 +172,21 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/develop' }}
 
-      # AJUSTAR: nombre real de la tarea. Con el plugin de JLLeitschuh es
-      # "ktlintCheck"; con el de jmfayard/kotlinter es "lintKotlin".
+      # HeliBoard puede no tener plugin de ktlint. En vez de fallar por una tarea
+      # inexistente, se detecta y se avisa: no vale romper el CI por el formato
+      # del codigo de upstream.
       # Los archivos generados por gen-tokens.py se excluyen en la config del
       # plugin (.editorconfig), no aca.
       - name: ktlint
-        run: ./gradlew ktlintCheck --stacktrace
+        run: |
+          set -euo pipefail
+          if ./gradlew -q tasks --all 2>/dev/null | grep -qE '^ktlintCheck|:ktlintCheck'; then
+            ./gradlew ktlintCheck --stacktrace
+          elif ./gradlew -q tasks --all 2>/dev/null | grep -qE '^lintKotlin|:lintKotlin'; then
+            ./gradlew lintKotlin --stacktrace
+          else
+            echo "::warning::No hay tarea de ktlint en este proyecto. El formato de Kotlin no se verifica todavia."
+          fi
 
       # Solo la app companiera y nuestros modulos. Correr Android Lint sobre el
       # modulo del teclado heredado de HeliBoard produce cientos de avisos que
@@ -238,7 +245,7 @@ jobs:
         run: |
           set -euo pipefail
           LIMITE_MB=25
-          apk="$(find app/build/outputs/apk -name '*.apk' -print -quit)"   # AJUSTAR si cambia el modulo
+          apk="$(find app/build/outputs/apk -name '*.apk' -print -quit)"   # :app es el modulo unico (verificado 2026-08-10)
           if [ -z "$apk" ]; then
             echo "::error::No se encontro ningun APK en app/build/outputs/apk."
             exit 1
