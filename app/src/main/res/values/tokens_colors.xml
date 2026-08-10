@@ -1,0 +1,57 @@
+<!-- GENERATED FROM design/tokens.json — DO NOT EDIT -->
+<!-- Regenerar: python3 design/gen-tokens.py --out . -->
+<resources>
+    <color name="surface_keyboard">#FFE1E4EA</color>
+    <color name="surface_bar">#FFE1E4EA</color>
+    <color name="surface_panel">#FFF7F8FA</color>
+    <color name="surface_app">#FFF7F8FA</color>
+    <color name="surface_raised">#FFFFFFFF</color>
+    <color name="surface_overlay">#FFFFFFFF</color>
+    <color name="surface_scrim">#73101216</color>
+    <color name="surface_inverse">#FF22252C</color>
+    <color name="surface_track">#FFE1E4EA</color>
+    <color name="surface_placeholder">#FFE1E4EA</color>
+    <color name="key_letter_bg">#FFFFFFFF</color>
+    <color name="key_letter_bg_pressed">#FFC9CDD6</color>
+    <color name="key_modifier_bg">#FFC9CDD6</color>
+    <color name="key_modifier_bg_pressed">#FF9BA1AE</color>
+    <color name="key_action_bg">#FF4F4CD4</color>
+    <color name="key_action_bg_pressed">#FF413CB0</color>
+    <color name="key_label">#FF191C22</color>
+    <color name="key_label_secondary">#FF545A67</color>
+    <color name="key_label_on_action">#FFFFFFFF</color>
+    <color name="key_popup_bg">#FFFFFFFF</color>
+    <color name="key_popup_bg_selected">#FF4F4CD4</color>
+    <color name="content_primary">#FF191C22</color>
+    <color name="content_secondary">#FF545A67</color>
+    <color name="content_tertiary">#FF6E7583</color>
+    <color name="content_disabled">#FFC9CDD6</color>
+    <color name="content_on_accent">#FFFFFFFF</color>
+    <color name="content_on_error">#FFFFFFFF</color>
+    <color name="content_inverse">#FFF7F8FA</color>
+    <color name="content_link">#FF413CB0</color>
+    <color name="border_subtle">#14101216</color>
+    <color name="border_default">#1F101216</color>
+    <color name="border_strong">#FF6E7583</color>
+    <color name="border_focus">#FF4F4CD4</color>
+    <color name="accent_default">#FF4F4CD4</color>
+    <color name="accent_pressed">#FF35318B</color>
+    <color name="accent_subtle">#FFEEEFFE</color>
+    <color name="accent_on_subtle">#FF413CB0</color>
+    <color name="accent_disabled">#FFC9CDD6</color>
+    <color name="feedback_error">#FFDC2626</color>
+    <color name="feedback_error_solid">#FFDC2626</color>
+    <color name="feedback_error_subtle">#FFFEF2F2</color>
+    <color name="feedback_error_on_subtle">#FFB91C1C</color>
+    <color name="feedback_warning">#FFD97706</color>
+    <color name="feedback_warning_subtle">#FFFFFBEB</color>
+    <color name="feedback_warning_on_subtle">#FFB45309</color>
+    <color name="feedback_success">#FF16A34A</color>
+    <color name="feedback_success_subtle">#FFF0FDF4</color>
+    <color name="feedback_success_on_subtle">#FF15803D</color>
+    <color name="feedback_info">#FF2563EB</color>
+    <color name="feedback_info_subtle">#FFEFF6FF</color>
+    <color name="feedback_info_on_subtle">#FF1D4ED8</color>
+    <color name="state_pressed">#1F101216</color>
+    <color name="state_selected">#FFEEEFFE</color>
+</resources>

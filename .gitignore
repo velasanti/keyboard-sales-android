@@ -15,3 +15,127 @@ tools/*.txt
 *.patch
 *.diff
 *.sh
+
+
+# ── Keyboard Sales AI ──
+# ---------------------------------------------------------------------------
+# keyboard-sales-android — .gitignore
+# Android + Kotlin + Gradle + IntelliJ/Android Studio
+#
+# Regla del proyecto: los secrets NUNCA entran al repo. Este repo es PUBLICO
+# bajo GPL-3.0, asi que un secret commiteado es un secret filtrado, aunque se
+# borre despues (queda en el historial y en los forks).
+# ---------------------------------------------------------------------------
+
+# --- Gradle ---
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+local.properties
+.kotlin/
+gradle-app.setting
+.gradletasknamecache
+**/.gradle/
+
+# --- Android / build outputs ---
+*.apk
+*.aab
+*.ap_
+*.aar
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+captures/
+output.json
+lint-results*.html
+lint-results*.xml
+.cxx/
+*.hprof
+.navigation/
+
+# --- Firma. Nunca se commitea un keystore ni sus claves. ---
+*.jks
+*.keystore
+!debug.keystore
+keystore.properties
+signing.properties
+
+# --- Configuracion local con credenciales (endpoints, API keys de dev) ---
+secrets.properties
+secrets.defaults.properties
+*.local.properties
+.env
+.env.*
+!.env.example
+
+# --- Kotlin / KSP / SQLDelight ---
+*.kotlin_module
+.kotlin_sessions/
+**/generated/
+!**/src/main/**/generated/
+
+# --- IntelliJ IDEA / Android Studio ---
+.idea/
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+*.iml
+*.ipr
+*.iws
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/gradle.xml
+.idea/jarRepositories.xml
+.idea/misc.xml
+.idea/deploymentTargetDropDown.xml
+.idea/deploymentTargetSelector.xml
+.idea/androidTestResultsUserPreferences.xml
+.idea/kotlinc.xml
+.idea/appInsightsSettings.xml
+
+# --- Eclipse (por si alguien abre el repo con otra herramienta) ---
+.classpath
+.project
+.settings/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
+
+# --- Herramientas y temporales ---
+/reports/
+/tmp/
+*.log
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+
+# --- NativeScript/Fastlane opcionales ---
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# ---------------------------------------------------------------------------
+# NO ignorar los archivos generados por design/gen-tokens.py.
+# Se commitean a proposito: el CI compara el output del generador contra lo
+# commiteado (gen-tokens --check) y falla si hay deriva.
+#   keyboard/src/main/res/values/tokens_colors.xml
+#   keyboard/src/main/res/values-night/tokens_colors.xml
+#   keyboard/src/main/res/values/tokens_dimens.xml
+#   app/src/main/java/com/keyboardsales/app/ui/theme/Tokens.kt
+# ---------------------------------------------------------------------------
