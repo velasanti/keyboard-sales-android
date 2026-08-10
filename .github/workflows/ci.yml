@@ -299,6 +299,61 @@ jobs:
             exit 1
           fi
 
+      # ¿Cuanto del APK son libs nativas, y de que ABI? El proyecto compila un
+      # APK UNIVERSAL con cuatro ABI (app/build.gradle.kts: armeabi-v7a,
+      # arm64-v8a, x86, x86_64) y sin splits, asi que el peso medido incluye
+      # x86 y x86_64, que son arquitecturas de EMULADOR: ningun telefono real
+      # del segmento las ejecuta. Este paso dice exactamente cuanto cuesta cada
+      # una, para decidir con numeros si vale configurar splits o un AAB.
+      # No edita nada de upstream: solo inspecciona el APK ya construido.
+      - name: Composicion del APK por ABI
+        run: |
+          set -euo pipefail
+          apk="$(find app/build/outputs/apk -name '*.apk' -print -quit)"
+          echo "APK: $apk"
+          total="$(stat -c%s "$apk")"
+          {
+            echo "### Composicion del APK"
+            echo ""
+            echo "| Parte | MB | % del APK |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            bytes="$(unzip -l "$apk" "lib/$abi/*" 2>/dev/null | tail -1 | awk '{print $1}')"
+            bytes="${bytes:-0}"
+            mb="$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b/1048576 }')"
+            pct="$(awk -v b="$bytes" -v t="$total" 'BEGIN { printf "%.1f", (t>0 ? b*100/t : 0) }')"
+            echo "lib/$abi: ${mb} MB (${pct}%)"
+            echo "| lib/$abi | ${mb} | ${pct}% |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          nativo="$(unzip -l "$apk" "lib/*" 2>/dev/null | tail -1 | awk '{print $1}')"
+          nativo="${nativo:-0}"
+          resto="$((total - nativo))"
+          for par in "TOTAL nativo:$nativo" "Resto (dex, recursos, assets):$resto"; do
+            etq="${par%%:*}"; b="${par##*:}"
+            mb="$(awk -v b="$b" 'BEGIN { printf "%.2f", b/1048576 }')"
+            pct="$(awk -v b="$b" -v t="$total" 'BEGIN { printf "%.1f", (t>0 ? b*100/t : 0) }')"
+            echo "${etq}: ${mb} MB (${pct}%)"
+            echo "| **${etq}** | **${mb}** | **${pct}%** |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          arm64="$(unzip -l "$apk" "lib/arm64-v8a/*" 2>/dev/null | tail -1 | awk '{print $1}')"
+          arm64="${arm64:-0}"
+          solo_arm64="$((total - nativo + arm64))"
+          mb="$(awk -v b="$solo_arm64" 'BEGIN { printf "%.2f", b/1048576 }')"
+          echo ""
+          echo "Estimacion: un APK solo arm64-v8a pesaria ~${mb} MB"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Estimacion: un APK solo arm64-v8a pesaria ~${mb} MB** (meta 25 MB)" >> "$GITHUB_STEP_SUMMARY"
+
+      # El APK de debug queda como artefacto descargable, para poder instalarlo
+      # en un telefono sin tener el SDK de Android en la maquina.
+      - name: Publicar el APK de debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
