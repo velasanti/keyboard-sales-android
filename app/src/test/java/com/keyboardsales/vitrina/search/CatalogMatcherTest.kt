@@ -37,6 +37,25 @@ class CatalogMatcherTest {
     }
 
     @Test
+    fun `los gemelos se desempatan alfabetico dentro del mismo nivel`() {
+        // 04.10 §3.4: sin historial de recencia/frecuencia ni popularidad, el
+        // desempate cae directo a alfabetico: 180 antes que 220.
+        val result = CatalogMatcher.matchItems(items, "Mesa Granada")
+        assertEquals(listOf("edg-mesa-granada-nogal-180", "edg-mesa-granada-nogal-220"), result.map { it.id })
+    }
+
+    @Test
+    fun `multi-categoria a mismo nivel se ordena alfabetico`() {
+        // "granada" deja a los tres (180, 220, Banca) en el mismo nivel; el
+        // desempate alfabetico de 04.10 §3.4 pone la Banca primero.
+        val result = CatalogMatcher.matchItems(items, "granada")
+        assertEquals(
+            listOf("edg-banca-granada-roble", "edg-mesa-granada-nogal-180", "edg-mesa-granada-nogal-220"),
+            result.map { it.id },
+        )
+    }
+
+    @Test
     fun `el 180 no colapsa con el 220 en la busqueda`() {
         val result = CatalogMatcher.matchItems(items, "granada 180")
         assertEquals(1, result.size)
@@ -145,6 +164,14 @@ class CatalogMatcherTest {
     @Test
     fun `respuestas rapidas vacias devuelven vacio`() {
         assertEquals(0, CatalogMatcher.matchQuickReplies(replies, "").size)
+    }
+
+    @Test
+    fun `respuestas rapidas a mismo nivel van alfabetico`() {
+        // "e" matchea "envio" por prefijo y "medidas" por substring; el prefijo
+        // va primero y dentro del mismo nivel alfabetico (04.10 §3.4).
+        val result = CatalogMatcher.matchQuickReplies(replies, "e")
+        assertEquals(listOf("rr-envio", "rr-medidas"), result.map { it.id })
     }
 }
 

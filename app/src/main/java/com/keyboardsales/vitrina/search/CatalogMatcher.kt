@@ -20,8 +20,11 @@ import com.keyboardsales.vitrina.data.QuickReply
  *  - substring en la busqueda completa: 20
  *  - score 0 = sin coincidencia, no entra.
  *
- * Orden: score desc, luego nombre mas corto, luego id (determinista). El orden
- * exacto entre empates de igual score no esta especificado por 04.10 (pendiente).
+ * Desempate dentro de cada nivel (04.10 §3.4): recencia×frecuencia del
+ * vendedor → popularidad en el tenant → alfabetico. En el prototipo con datos
+ * dummy no hay historial (ADR-011 fuera de V1) ni popularidad en el tenant,
+ * asi que el desempate cae DIRECTO a alfabetico sobre [CatalogItem.busqueda]
+ * (que empieza por el nombre normalizado) y, para el mismo nombre, por id.
  */
 object CatalogMatcher {
 
@@ -32,7 +35,7 @@ object CatalogMatcher {
             .map { it to score(it, q) }
             .filter { it.second > 0 }
             .sortedWith(compareByDescending<Pair<CatalogItem, Int>> { it.second }
-                .thenBy { it.first.nombre.length }
+                .thenBy { it.first.busqueda }
                 .thenBy { it.first.id })
             .map { it.first }
     }
@@ -45,7 +48,9 @@ object CatalogMatcher {
                 val atajo = TextNormalizer.normalize(reply.atajo)
                 atajo.startsWith(q) || atajo.contains(q)
             }
-            .sortedWith(compareBy<QuickReply> { TextNormalizer.normalize(it.atajo).length }.thenBy { it.id })
+            .sortedWith(compareByDescending<QuickReply> { TextNormalizer.normalize(it.atajo).startsWith(q) }
+                .thenBy { TextNormalizer.normalize(it.atajo) }
+                .thenBy { it.id })
     }
 
     private fun score(item: CatalogItem, q: String): Int {
