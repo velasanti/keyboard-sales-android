@@ -355,3 +355,33 @@ No lo borramos: seria una cuarta excepcion a la regla de diff aditivo y agrega f
    ```
 4. **Verificar que `settings.gradle` sigue teniendo un solo modulo de aplicacion.** Si upstream parte `:app`, las rutas de `gen-tokens.py` dejan de ser validas.
 5. **Verificar que `app/build.gradle.kts` sigue habilitando Compose.** Si upstream lo saca, `Tokens.kt` deja de compilar.
+
+
+## Diccionarios: `ignoreAssetsPatterns` (peso del APK)
+
+Mas de la mitad del APK de partida eran diccionarios de idioma: **14.32 MB de 25.74 MB**, 17 idiomas
+empacados. Este producto vende a vendedores en LatAm, asi que se empacan solo `es`, `en-US` y `pt-BR`.
+
+**No se borra ningun `.dict` del repo.** Los 18 archivos siguen versionados; solo se excluyen del
+paquete via `androidResources.ignoreAssetsPatterns` en `app/build.gradle.kts`. Borrarlos seria un diff
+destructivo que habria que volver a pelear en cada rebase.
+
+El mecanismo es de upstream, no nuestro: HeliBoard ya excluia `main_ro.dict` porque el APK
+*"got a little too big for GitHub"*. Nuestro bloque hace lo mismo, con dos diferencias: aplica a
+**todos** los buildTypes (el de upstream era solo-debug) y **calcula** la lista de exclusion a partir
+de lo que hay en disco menos `idiomasEmpacados`.
+
+### Al rebasear, revisar dos cosas
+
+1. **Si upstream cambio su linea de `ignoreAssetsPatterns`.** Es una asignacion (`=`), no una suma.
+   Nuestra linea la pisa. Como nuestra lista es un superconjunto de los `main_*.dict`, se pisa sin
+   perdida *mientras upstream solo excluya diccionarios*. Si upstream empieza a excluir otro tipo de
+   asset, hay que fusionar las dos listas a mano.
+2. **Si upstream movio los diccionarios fuera de `app/src/main/assets/dicts`.** El `require()` del
+   bloque hace fallar la configuracion de Gradle con un mensaje explicito, en vez de empacar los 18
+   idiomas en silencio. Si falla por eso, la solucion no es borrar el `require`.
+
+### Lo que NO hace este cambio
+
+Excluir el diccionario **no saca el idioma de la lista de teclados** de HeliBoard: lo deja sin
+diccionario empacado. Restringir los idiomas *ofrecidos* es otro cambio y otra decision.
