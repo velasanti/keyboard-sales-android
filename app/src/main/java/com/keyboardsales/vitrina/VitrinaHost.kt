@@ -116,9 +116,7 @@ class VitrinaHost(private val ime: SalesIME) {
             marginEnd = pad
             topMargin = pad
         }
-        anchor.setOnClickListener {
-            if (panelVisible) hidePanel() else showPanel()
-        }
+        anchor.setOnClickListener { togglePanel() }
         anchorView = anchor
         wrapper.addView(anchor, lp)
     }
@@ -280,6 +278,14 @@ class VitrinaHost(private val ime: SalesIME) {
         hideBar()
     }
 
+    /** El chip de la barra y el ancla comparten la entrada al modo (04.10). */
+    private fun togglePanel() {
+        when (PanelToggle.next(panelVisible)) {
+            PanelAction.SHOW -> showPanel()
+            PanelAction.HIDE -> hidePanel()
+        }
+    }
+
     private fun performInsert() {
         val message = pendingMessage ?: return
         val insertResult = InsertController.insert(ime, pendingDeleteLength, message)
@@ -400,8 +406,9 @@ class VitrinaHost(private val ime: SalesIME) {
         if (badgeAdded || !catalogIsDummy) return
         val context = container.context
         val badge = DummyCatalogBadgeView(context).apply {
-            isClickable = false
-            isFocusable = false
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { togglePanel() }
         }
         val lp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -413,6 +420,7 @@ class VitrinaHost(private val ime: SalesIME) {
         lp.marginEnd = paddingX
         lp.topMargin = paddingY
         container.addView(badge, lp)
+        container.expandTouchTarget(badge, container.resources.getDimensionPixelSize(R.dimen.size_touch_min))
         badgeAdded = true
     }
 

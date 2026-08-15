@@ -42,7 +42,7 @@
     <dimen name="kb_bar_pad_h">8dp</dimen>
     <dimen name="kb_bar_gap">6dp</dimen>
     <dimen name="kb_chip_height">36dp</dimen>
-    <dimen name="kb_anchor_size">40dp</dimen>
+    <dimen name="kb_anchor_size">48dp</dimen>
     <dimen name="kb_row_height">46dp</dimen>
     <integer name="kb_row_count">4</integer>
     <dimen name="kb_key_gutter">4dp</dimen>

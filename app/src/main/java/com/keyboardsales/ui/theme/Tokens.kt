@@ -54,7 +54,7 @@ object Dim {
     val kbBarPadH = 8.dp
     val kbBarGap = 6.dp
     val kbChipHeight = 36.dp
-    val kbAnchorSize = 40.dp
+    val kbAnchorSize = 48.dp
     val kbRowHeight = 46.dp
     val kbRowCount = 4
     val kbKeyGutter = 4.dp
