@@ -35,7 +35,10 @@ class SalesIME : LatinIME() {
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
             val esDummy = catalogRepository.isDummy()
-            mainHandler.post { vitrinaHost.onCatalogLoaded(esDummy) }
+            mainHandler.post {
+                vitrinaHost.onRepositoryReady(catalogRepository)
+                vitrinaHost.onCatalogLoaded(esDummy)
+            }
         }
     }
 

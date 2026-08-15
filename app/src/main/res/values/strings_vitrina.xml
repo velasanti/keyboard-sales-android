@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="vitrina_badge_dummy">Catálogo de prueba</string>
+    <string name="vitrina_chip_product_cd">Producto: %1$s</string>
+    <string name="vitrina_chip_reply_cd">Respuesta rápida: /%1$s</string>
 </resources>

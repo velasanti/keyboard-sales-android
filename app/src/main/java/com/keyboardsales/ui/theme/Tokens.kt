@@ -69,6 +69,7 @@ object Dim {
     val kbCardImageHeight = 88.dp
     val kbConfirmHeightMin = 180.dp
     val kbBarNoticeHeight = 48.dp
+    val kbBarExpandedMinHeight = 640.dp
     val zBase = 0
     val zBar = 10
     val zSticky = 20
