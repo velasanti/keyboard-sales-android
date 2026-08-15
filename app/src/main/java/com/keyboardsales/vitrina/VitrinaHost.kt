@@ -17,6 +17,8 @@ import com.keyboardsales.vitrina.data.CatalogRepository
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.InsertController
 import com.keyboardsales.vitrina.insert.MessageBuilder
+import com.keyboardsales.vitrina.panel.VitrinaAnchorView
+import com.keyboardsales.vitrina.panel.VitrinaPanelView
 import com.keyboardsales.vitrina.search.CatalogMatcher
 import com.keyboardsales.vitrina.search.TriggerDetector
 import com.keyboardsales.vitrina.search.VitrinaTrigger
@@ -39,7 +41,7 @@ import java.util.concurrent.Executors
 class VitrinaHost(private val ime: SalesIME) {
 
     private var stripContainer: FrameLayout? = null
-    private var keyboardViewWrapper: View? = null
+    private var keyboardViewWrapper: android.view.ViewGroup? = null
 
     private var catalogIsDummy = false
     private var badgeAdded = false
@@ -47,6 +49,10 @@ class VitrinaHost(private val ime: SalesIME) {
     private var repository: CatalogRepository? = null
     private var barView: VitrinaBarView? = null
     private var suggestionStripView: View? = null
+    private var keyboardView: View? = null
+    private var anchorView: VitrinaAnchorView? = null
+    private var panelView: VitrinaPanelView? = null
+    private var panelVisible = false
     private var barActive = false
     private var pendingMessage: String? = null
     private var pendingDeleteLength = 0
@@ -61,7 +67,8 @@ class VitrinaHost(private val ime: SalesIME) {
 
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
-        keyboardViewWrapper = view.findViewById(R.id.keyboard_view_wrapper)
+        keyboardViewWrapper = view.findViewById<android.view.ViewGroup>(R.id.keyboard_view_wrapper)
+        keyboardView = view.findViewById(R.id.keyboard_view)
         Log.d(TAG, "onInputView: strip=${stripContainer != null}, wrapper=${keyboardViewWrapper != null}")
         if (stripContainer != null) {
             suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
@@ -76,7 +83,44 @@ class VitrinaHost(private val ime: SalesIME) {
                 ),
             )
         }
+        injectPanel(view)
         renderBadge()
+    }
+
+    /**
+     * Vitrina modo: el ancla y el panel como hijos de keyboard_view_wrapper,
+     * con el patron de emoji_palettes_view (hermanos del QWERTY que se
+     * alternan por visibilidad).
+     */
+    private fun injectPanel(view: View) {
+        val wrapper = keyboardViewWrapper ?: return
+        val panel = VitrinaPanelView(view.context)
+        panel.visibility = View.GONE
+        panel.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            view.resources.getDimensionPixelSize(R.dimen.kb_panel_height),
+            Gravity.TOP,
+        )
+        wirePanelCallbacks(panel)
+        panelView = panel
+        wrapper.addView(panel)
+
+        val anchor = VitrinaAnchorView(view.context)
+        anchor.contentDescription = view.context.getString(R.string.vitrina_anchor_open)
+        val pad = view.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+        val lp = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP or Gravity.END,
+        ).apply {
+            marginEnd = pad
+            topMargin = pad
+        }
+        anchor.setOnClickListener {
+            if (panelVisible) hidePanel() else showPanel()
+        }
+        anchorView = anchor
+        wrapper.addView(anchor, lp)
     }
 
     fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -108,6 +152,7 @@ class VitrinaHost(private val ime: SalesIME) {
         composingSpanStart: Int,
         composingSpanEnd: Int,
     ) {
+        if (panelVisible) return
         val textBeforeCursor = ime.getCurrentInputConnection()
             ?.getTextBeforeCursor(maxReadAheadChars, 0)
             ?.toString()
@@ -185,6 +230,55 @@ class VitrinaHost(private val ime: SalesIME) {
 
     private fun readTextBeforeCursor(): String? =
         ime.getCurrentInputConnection()?.getTextBeforeCursor(maxReadAheadChars, 0)?.toString()
+
+    // ------------------------------------------------------------------
+    // Vitrina modo: panel y ancla
+    // ------------------------------------------------------------------
+
+    private fun wirePanelCallbacks(panel: VitrinaPanelView) {
+        panel.onProductClick = product@{ item ->
+            val message = MessageBuilder.productMessage(item)
+            if (message.isEmpty()) return@product
+            pendingMessage = message
+            pendingDeleteLength = 0
+            barView?.showConfirm(message)
+            showBar()
+        }
+        panel.onQuickReplyClick = reply@{ reply ->
+            val message = MessageBuilder.quickReplyMessage(reply)
+            if (message.isEmpty()) return@reply
+            pendingMessage = message
+            pendingDeleteLength = 0
+            barView?.showConfirm(message)
+            showBar()
+        }
+        panel.onClose = { hidePanel() }
+    }
+
+    private fun showPanel() {
+        val panel = panelView ?: return
+        val keyboard = keyboardView ?: return
+        val repository = this.repository ?: return
+        hideBar()
+        panel.visibility = View.VISIBLE
+        keyboard.visibility = View.GONE
+        panelVisible = true
+        anchorView?.contentDescription = ime.getString(R.string.vitrina_anchor_close)
+        searchExecutor.execute {
+            val products = repository.allItems()
+            val replies = repository.allQuickReplies()
+            mainHandler.post { panel.populate(products, replies) }
+        }
+    }
+
+    private fun hidePanel() {
+        if (!panelVisible) return
+        panelVisible = false
+        panelView?.visibility = View.GONE
+        keyboardView?.visibility = View.VISIBLE
+        anchorView?.contentDescription = ime.getString(R.string.vitrina_anchor_open)
+        hideBar()
+    }
 
     private fun performInsert() {
         val message = pendingMessage ?: return
@@ -290,6 +384,7 @@ class VitrinaHost(private val ime: SalesIME) {
         cancelPendingUndo()
         pendingMessage = null
         insertedLength = 0
+        hidePanel()
         hideBar()
     }
 

@@ -7,4 +7,10 @@
     <string name="vitrina_cancel">Cancelar</string>
     <string name="vitrina_undo">Deshacer</string>
     <string name="vitrina_sent_label">Enviado</string>
+    <string name="vitrina_anchor_open">Abrir catálogo de productos</string>
+    <string name="vitrina_anchor_close">Cerrar catálogo de productos</string>
+    <string name="vitrina_title">Catálogo</string>
+    <string name="vitrina_close">Cerrar</string>
+    <string name="vitrina_section_products">Productos</string>
+    <string name="vitrina_section_quick_replies">Respuestas rápidas</string>
 </resources>
