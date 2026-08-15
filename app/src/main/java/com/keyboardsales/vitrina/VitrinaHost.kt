@@ -5,7 +5,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
 import com.keyboardsales.ime.SalesIME
@@ -16,6 +15,8 @@ import com.keyboardsales.vitrina.bar.VitrinaBarView
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.CatalogRepository
 import com.keyboardsales.vitrina.data.QuickReply
+import com.keyboardsales.vitrina.insert.InsertController
+import com.keyboardsales.vitrina.insert.MessageBuilder
 import com.keyboardsales.vitrina.search.CatalogMatcher
 import com.keyboardsales.vitrina.search.TriggerDetector
 import com.keyboardsales.vitrina.search.VitrinaTrigger
@@ -25,12 +26,15 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Punto unico de contacto entre [SalesIME] y las dos superficies de Vitrina.
+ * Punto unico de contacto entre [SalesIME] y las superficies de Vitrina.
  *
- * Toda la escritura a la jerarquia de vistas es aditiva: aca se encuentran por
- * id los contenedores que upstream ya infla (leer ids no es editar) y las
- * superficies propias se agregan como hijos en runtime. Ningun archivo de
- * upstream se modifica salvo AndroidManifest.xml.
+ * Escritura aditiva sobre la jerarquia de upstream: contenedores encontrados
+ * por id y superficies propias agregadas en runtime. Ningun archivo de upstream
+ * se modifica salvo AndroidManifest.xml.
+ *
+ * Maquina de estados de la capa:
+ *   IDLE -> SEARCHING (trigger # o /) -> CONFIRM (ADR-016) -> insert -> UNDO
+ *   UNDO -> (Deshacer | timeout | nuevo trigger)
  */
 class VitrinaHost(private val ime: SalesIME) {
 
@@ -44,6 +48,11 @@ class VitrinaHost(private val ime: SalesIME) {
     private var barView: VitrinaBarView? = null
     private var suggestionStripView: View? = null
     private var barActive = false
+    private var pendingMessage: String? = null
+    private var pendingDeleteLength = 0
+    private var insertedLength = 0
+    private var undoShowing = false
+    private var undoRunnable: Runnable? = null
 
     private val searchExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -56,9 +65,11 @@ class VitrinaHost(private val ime: SalesIME) {
         Log.d(TAG, "onInputView: strip=${stripContainer != null}, wrapper=${keyboardViewWrapper != null}")
         if (stripContainer != null) {
             suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
-            barView = VitrinaBarView(view.context)
+            val bar = VitrinaBarView(view.context)
+            wireBarCallbacks(bar)
+            barView = bar
             stripContainer?.addView(
-                barView,
+                bar,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -70,12 +81,12 @@ class VitrinaHost(private val ime: SalesIME) {
 
     fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         Log.d(TAG, "onStartInputView(restarting=$restarting)")
-        hideBar()
+        resetToIdle()
     }
 
     fun onFinishInputView(finishingInput: Boolean) {
         Log.d(TAG, "onFinishInputView(finishingInput=$finishingInput)")
-        hideBar()
+        resetToIdle()
     }
 
     fun onRepositoryReady(repository: CatalogRepository) {
@@ -102,13 +113,22 @@ class VitrinaHost(private val ime: SalesIME) {
             ?.toString()
             ?: return
         when (val trigger = TriggerDetector.detect(textBeforeCursor)) {
-            is VitrinaTrigger.None -> hideBar()
-            is VitrinaTrigger.Product -> startSearch(trigger.query, product = true)
-            is VitrinaTrigger.QuickReply -> startSearch(trigger.query, product = false)
+            is VitrinaTrigger.None -> {
+                // Si estamos en UNDO, el texto cambio al insertar y no hay trigger:
+                // se mantiene el Deshacer hasta el timeout.
+                if (!undoShowing) hideBar()
+            }
+            is VitrinaTrigger.Product -> startSearch(textBeforeCursor, trigger.query, product = true)
+            is VitrinaTrigger.QuickReply -> startSearch(textBeforeCursor, trigger.query, product = false)
         }
     }
 
-    private fun startSearch(query: String, product: Boolean) {
+    // ------------------------------------------------------------------
+    // Busqueda (off del hilo de UI)
+    // ------------------------------------------------------------------
+
+    private fun startSearch(textBeforeCursor: String, query: String, product: Boolean) {
+        cancelPendingUndo()
         val repository = this.repository ?: return
         searchExecutor.execute {
             val matches: List<Any> = if (product) {
@@ -117,11 +137,11 @@ class VitrinaHost(private val ime: SalesIME) {
                 CatalogMatcher.matchQuickReplies(repository.allQuickReplies(), query)
             }
             mainHandler.post {
-                showBar()
                 if (matches.isEmpty()) {
-                    barView?.clear()
+                    barView?.clearChips()
                     return@post
                 }
+                showBar()
                 if (product) {
                     @Suppress("UNCHECKED_CAST")
                     barView?.showProducts(matches as List<CatalogItem>)
@@ -133,12 +153,77 @@ class VitrinaHost(private val ime: SalesIME) {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Confirmacion (ADR-016) e insercion
+    // ------------------------------------------------------------------
+
+    private fun wireBarCallbacks(bar: VitrinaBarView) {
+        bar.onProductClick = product@{ item ->
+            val text = readTextBeforeCursor() ?: return@product
+            val trigger = TriggerDetector.detect(text)
+            if (trigger !is VitrinaTrigger.Product) return@product
+            val message = MessageBuilder.productMessage(item)
+            if (message.isEmpty()) return@product
+            pendingMessage = message
+            pendingDeleteLength = TriggerDetector.deleteLength(text, trigger)
+            barView?.showConfirm(message)
+        }
+        bar.onQuickReplyClick = reply@{ reply ->
+            val text = readTextBeforeCursor() ?: return@reply
+            val trigger = TriggerDetector.detect(text)
+            if (trigger !is VitrinaTrigger.QuickReply) return@reply
+            val message = MessageBuilder.quickReplyMessage(reply)
+            if (message.isEmpty()) return@reply
+            pendingMessage = message
+            pendingDeleteLength = TriggerDetector.deleteLength(text, trigger)
+            barView?.showConfirm(message)
+        }
+        bar.onConfirm = { performInsert() }
+        bar.onCancel = { barView?.showChips() }
+        bar.onUndo = { performUndo() }
+    }
+
+    private fun readTextBeforeCursor(): String? =
+        ime.getCurrentInputConnection()?.getTextBeforeCursor(maxReadAheadChars, 0)?.toString()
+
+    private fun performInsert() {
+        val message = pendingMessage ?: return
+        val insertResult = InsertController.insert(ime, pendingDeleteLength, message)
+        pendingMessage = null
+        if (insertResult < 0) return
+        insertedLength = insertResult
+        undoShowing = true
+        barView?.showUndo()
+        scheduleUndoTimeout()
+    }
+
+    private fun performUndo() {
+        cancelPendingUndo()
+        InsertController.undo(ime, insertedLength)
+        undoShowing = false
+        insertedLength = 0
+        hideBar()
+    }
+
+    private fun cancelPendingUndo() {
+        undoRunnable?.let { mainHandler.removeCallbacks(it) }
+        undoRunnable = null
+        undoShowing = false
+    }
+
+    private fun scheduleUndoTimeout() {
+        val runnable = Runnable { if (undoShowing) hideBar() }
+        undoRunnable = runnable
+        mainHandler.postDelayed(runnable, UNDO_TIMEOUT_MS)
+    }
+
+    // ------------------------------------------------------------------
+    // Barra: altura, alternancia de strips
+    // ------------------------------------------------------------------
+
     /**
-     * Activa Vitrina capa: los chips reemplazan la fila de sugerencias.
-     *
-     * Supuesto (04.8 sin leer): en la rama EXPANDED_ROW la sugerencia queda
-     * arriba (48dp) y los chips abajo (48dp) = "suma fila"; en OVERLAY los chips
-     * reemplazan la fila entera sin crecer el contenedor. A verificar en A51.
+     * Supuesto (04.8 sin leer): EXPANDED_ROW suma fila (sugerencias arriba,
+     * superficie de Vitrina abajo); OVERLAY reemplaza la fila sin crecer.
      */
     private fun showBar() {
         val container = stripContainer ?: return
@@ -146,8 +231,7 @@ class VitrinaHost(private val ime: SalesIME) {
         val suggestion = suggestionStripView ?: return
         barActive = true
 
-        val layout = currentBarLayout(container)
-        when (layout) {
+        when (currentBarLayout(container)) {
             BarLayout.EXPANDED_ROW -> {
                 container.layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -180,10 +264,10 @@ class VitrinaHost(private val ime: SalesIME) {
         bar.visibility = View.VISIBLE
     }
 
-    /** Restaura strip_container y la fila de sugerencias al estado de upstream. */
     private fun hideBar() {
         if (!barActive) return
         barActive = false
+        cancelPendingUndo()
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return
         val bar = barView ?: return
@@ -199,9 +283,17 @@ class VitrinaHost(private val ime: SalesIME) {
         )
         suggestion.visibility = View.VISIBLE
         bar.visibility = View.GONE
+        barView?.clearChips()
     }
 
-    private fun currentBarLayout(container: ViewGroup): BarLayout {
+    private fun resetToIdle() {
+        cancelPendingUndo()
+        pendingMessage = null
+        insertedLength = 0
+        hideBar()
+    }
+
+    private fun currentBarLayout(container: android.view.ViewGroup): BarLayout {
         container.getWindowVisibleDisplayFrame(windowRect)
         val threshold = container.resources.getDimensionPixelSize(R.dimen.kb_bar_expanded_min_height)
         return BarMode.decide(usableHeightPx = windowRect.height(), expandedThresholdPx = threshold)
@@ -231,5 +323,6 @@ class VitrinaHost(private val ime: SalesIME) {
 
     companion object {
         private const val TAG = "Vitrina"
+        private const val UNDO_TIMEOUT_MS = 8_000L
     }
 }

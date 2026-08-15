@@ -26,6 +26,19 @@ object TriggerDetector {
             else -> VitrinaTrigger.None
         }
     }
+
+    /**
+     * Cuantos caracteres borrar al insertar: desde el inicio del disparador
+     * hasta el cursor (incluye un espacio final si quedó despues del termino).
+     * "Hola #mesa " -> 6 (borra "#mesa " y deja "Hola " + mensaje).
+     */
+    fun deleteLength(textBeforeCursor: String, trigger: VitrinaTrigger): Int {
+        if (trigger is VitrinaTrigger.None) return 0
+        val trimmed = textBeforeCursor.trimEnd()
+        if (trimmed.isEmpty()) return 0
+        val wordStart = trimmed.indexOfLast { it.isWhitespace() } + 1
+        return textBeforeCursor.length - wordStart
+    }
 }
 
 sealed interface VitrinaTrigger {

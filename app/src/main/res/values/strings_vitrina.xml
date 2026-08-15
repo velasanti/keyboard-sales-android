@@ -3,4 +3,8 @@
     <string name="vitrina_badge_dummy">Catálogo de prueba</string>
     <string name="vitrina_chip_product_cd">Producto: %1$s</string>
     <string name="vitrina_chip_reply_cd">Respuesta rápida: /%1$s</string>
+    <string name="vitrina_confirm">Confirmar</string>
+    <string name="vitrina_cancel">Cancelar</string>
+    <string name="vitrina_undo">Deshacer</string>
+    <string name="vitrina_sent_label">Enviado</string>
 </resources>

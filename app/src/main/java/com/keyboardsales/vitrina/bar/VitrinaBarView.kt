@@ -10,26 +10,29 @@ import com.keyboardsales.vitrina.data.QuickReply
 import helium314.keyboard.latin.R
 
 /**
- * La fila de chips de Vitrina capa. Un HorizontalScrollView aditivo dentro de
- * strip_container, hermano de la fila de sugerencias de upstream (que se oculta
- * mientras Vitrina esta activa).
+ * La superficie de Vitrina capa: fila de chips de coincidencias (productos o
+ * respuestas rapidas) o panel de accion (confirm/undo). Es un hermano aditivo
+ * de la fila de sugerencias de upstream dentro de strip_container.
  */
-class VitrinaBarView(context: Context) : HorizontalScrollView(context) {
+class VitrinaBarView(context: Context) : FrameLayout(context) {
 
+    private val chipsRow = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+    }
     private val chips = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
+    private val actionRow = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        isFillViewport = true
+    }
+    private val actionView = VitrinaActionView(context)
 
     init {
-        isHorizontalScrollBarEnabled = false
-        setPadding(
-            context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-            0,
-            context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-            0,
-        )
-        addView(
+        val padX = context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+        chipsRow.setPadding(padX, 0, padX, 0)
+        chipsRow.addView(
             chips,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -37,31 +40,76 @@ class VitrinaBarView(context: Context) : HorizontalScrollView(context) {
                 Gravity.CENTER_VERTICAL,
             ),
         )
+        actionRow.addView(
+            actionView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER_VERTICAL,
+            ),
+        )
+        addView(chipsRow)
+        addView(actionRow)
+        showChips()
     }
 
+    var onProductClick: ((CatalogItem) -> Unit)? = null
+    var onQuickReplyClick: ((QuickReply) -> Unit)? = null
+    var onConfirm: (() -> Unit)? = null
+    var onCancel: (() -> Unit)? = null
+    var onUndo: (() -> Unit)? = null
+
     fun showProducts(products: List<CatalogItem>) {
-        renderChips(products.map { it.nombre to cd(it) }, accent = false)
+        chips.removeAllViews()
+        for (product in products) {
+            val chip = VitrinaChipView(
+                chips.context,
+                product.nombre,
+                chips.context.getString(R.string.vitrina_chip_product_cd, product.nombre),
+                accent = false,
+            )
+            chip.setOnClickListener { onProductClick?.invoke(product) }
+            chips.addView(chip)
+        }
+        showChips()
     }
 
     fun showQuickReplies(replies: List<QuickReply>) {
-        renderChips(replies.map { "/${it.atajo}" to cd(it) }, accent = true)
-    }
-
-    fun clear() {
         chips.removeAllViews()
-    }
-
-    private fun renderChips(items: List<Pair<String, String>>, accent: Boolean) {
-        chips.removeAllViews()
-        val context = chips.context
-        for ((label, description) in items) {
-            chips.addView(VitrinaChipView(context, label, description, accent))
+        for (reply in replies) {
+            val chip = VitrinaChipView(
+                chips.context,
+                "/${reply.atajo}",
+                chips.context.getString(R.string.vitrina_chip_reply_cd, reply.atajo),
+                accent = true,
+            )
+            chip.setOnClickListener { onQuickReplyClick?.invoke(reply) }
+            chips.addView(chip)
         }
+        showChips()
     }
 
-    private fun cd(product: CatalogItem): String =
-        context.getString(R.string.vitrina_chip_product_cd, product.nombre)
+    fun showConfirm(message: String) {
+        actionView.showConfirm(message, onConfirm = { onConfirm?.invoke() }, onCancel = { onCancel?.invoke() })
+        showAction()
+    }
 
-    private fun cd(reply: QuickReply): String =
-        context.getString(R.string.vitrina_chip_reply_cd, reply.atajo)
+    fun showUndo() {
+        actionView.showUndo(onUndo = { onUndo?.invoke() })
+        showAction()
+    }
+
+    fun clearChips() {
+        chips.removeAllViews()
+    }
+
+    fun showChips() {
+        chipsRow.visibility = VISIBLE
+        actionRow.visibility = GONE
+    }
+
+    fun showAction() {
+        chipsRow.visibility = GONE
+        actionRow.visibility = VISIBLE
+    }
 }
