@@ -6,6 +6,7 @@ plugins {
     kotlin("android")
     kotlin("plugin.serialization") version "2.3.20"
     kotlin("plugin.compose") version "2.3.20"
+    id("app.cash.sqldelight") version "2.2.1"
 }
 
 android {
@@ -150,6 +151,16 @@ android {
     }
 }
 
+// keyboard-sales: Vitrina guarda el catalogo en SQLDelight. Apache-2.0, auditado
+// en docs/AUDITORIA-LICENCIAS.md.
+sqldelight {
+    databases {
+        create("CatalogDatabase") {
+            packageName.set("com.keyboardsales.vitrina.data")
+        }
+    }
+}
+
 dependencies {
     // androidx
     implementation("androidx.core:core-ktx:1.17.0") // 1.18.0 requires minSdk 23
@@ -172,6 +183,10 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.8")
     implementation("sh.calvin.reorderable:reorderable:3.1.0") // for easier re-ordering
     implementation("com.github.skydoves:colorpicker-compose:1.1.3") // for user-defined colors
+
+    // vitrina
+    implementation("app.cash.sqldelight:runtime:2.2.1")
+    implementation("app.cash.sqldelight:android-driver:2.2.1")
 
     // test
     testImplementation(kotlin("test"))

@@ -10,8 +10,8 @@
 
 ## Resumen
 
-- **Total de dependencias declaradas:** 22.
-- **Compatibles (MIT / Apache-2.0 / GPL-3.0 / GPL-2.0-or-later):** 20.
+- **Total de dependencias declaradas:** 24.
+- **Compatibles (MIT / Apache-2.0 / GPL-3.0 / GPL-2.0-or-later):** 22.
 - **Con matiz (ver notas):** 2 — `desugar_jdk_libs` (GPL-2.0 con Classpath
   Exception) y `junit` (EPL-1.0, test-only, no entra al APK).
 - **No compatibles:** 0.
@@ -36,6 +36,8 @@
 | com.github.skydoves:colorpicker-compose | 1.1.3 | app · runtime | Apache-2.0 | ✅ Compatible | LICENSE del repo |
 | com.android.tools:desugar_jdk_libs | 2.1.5 | app · coreLibraryDesugaring | GPL-2.0 con Classpath Exception | ⚠️ Compatible con matiz | POM Google Maven + LICENSE del repo |
 | org.jetbrains.kotlin:kotlin-stdlib | 2.3.20 | tools/make-emoji-keys | Apache-2.0 | ✅ Compatible | POM Maven Central |
+| app.cash.sqldelight:runtime | 2.2.1 | app · runtime (Vitrina) | Apache-2.0 | ✅ Compatible | POM Maven Central |
+| app.cash.sqldelight:android-driver | 2.2.1 | app · runtime (Vitrina) | Apache-2.0 | ✅ Compatible | POM Maven Central |
 | kotlin("test") | Kotlin 2.3.20 | app · test | Apache-2.0 | ✅ Compatible | POM Maven Central |
 | junit:junit | 4.13.2 | app · test | EPL-1.0 | ⚠️ No GPL-compatible, pero test-only | POM Maven Central |
 | org.mockito:mockito-core | 5.23.0 | app · test | MIT | ✅ Compatible | POM Maven Central |
