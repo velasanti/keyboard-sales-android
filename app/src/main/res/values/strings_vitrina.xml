@@ -11,6 +11,5 @@
     <string name="vitrina_anchor_close">Cerrar catálogo de productos</string>
     <string name="vitrina_title">Catálogo</string>
     <string name="vitrina_close">Cerrar</string>
-    <string name="vitrina_section_products">Productos</string>
     <string name="vitrina_section_quick_replies">Respuestas rápidas</string>
 </resources>
