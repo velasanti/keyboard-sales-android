@@ -1,0 +1,7 @@
+CREATE TABLE message_variant (
+  id TEXT PRIMARY KEY,
+  item_id TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  orden INTEGER NOT NULL
+);

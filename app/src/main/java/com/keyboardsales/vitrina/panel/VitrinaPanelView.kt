@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import com.keyboardsales.vitrina.bar.VitrinaChipView
 import com.keyboardsales.vitrina.data.CatalogGrouping
 import com.keyboardsales.vitrina.data.CatalogItem
+import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.PriceFormatter
 import helium314.keyboard.latin.R
@@ -23,7 +24,13 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
 
     private val list = LinearLayout(context).apply { orientation = VERTICAL }
 
+    private var products: List<CatalogItem> = emptyList()
+    private var replies: List<QuickReply> = emptyList()
+    private var variantsByItemId: Map<String, List<MessageVariant>> = emptyMap()
+    private var expandedItemId: String? = null
+
     var onProductClick: ((CatalogItem) -> Unit)? = null
+    var onVariantClick: ((CatalogItem, MessageVariant) -> Unit)? = null
     var onQuickReplyClick: ((QuickReply) -> Unit)? = null
     var onClose: (() -> Unit)? = null
 
@@ -38,13 +45,26 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
     }
 
-    fun populate(products: List<CatalogItem>, replies: List<QuickReply>) {
+    fun populate(products: List<CatalogItem>, replies: List<QuickReply>, variants: List<MessageVariant>) {
+        this.products = products
+        this.replies = replies
+        this.variantsByItemId = variants.groupBy { it.itemId }
+        expandedItemId = null
+        render()
+    }
+
+    private fun render() {
         val context = context
         list.removeAllViews()
         for ((categoria, grouped) in CatalogGrouping.byCategory(products)) {
             list.addView(sectionLabel(context, categoria))
             for (product in grouped) {
                 list.addView(productRow(context, product))
+                if (expandedItemId == product.id) {
+                    for (variant in variantsByItemId[product.id].orEmpty()) {
+                        list.addView(variantRow(context, product, variant))
+                    }
+                }
             }
         }
         list.addView(sectionLabel(context, context.getString(R.string.vitrina_section_quick_replies)))
@@ -132,7 +152,46 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
             price,
             context.getString(R.string.vitrina_chip_product_cd, product.nombre),
         ).apply {
-            setOnClickListener { onProductClick?.invoke(product) }
+            setOnClickListener {
+                if (variantsByItemId[product.id].isNullOrEmpty()) {
+                    onProductClick?.invoke(product)
+                } else {
+                    expandedItemId = if (expandedItemId == product.id) null else product.id
+                    render()
+                }
+            }
+        }
+    }
+
+    private fun variantRow(context: Context, product: CatalogItem, variant: MessageVariant): LinearLayout {
+        val tipo = TextView(context).apply {
+            text = variant.tipo
+            setSingleLine(true)
+            maxLines = 1
+            setTextColor(ContextCompat.getColor(context, R.color.accent_on_subtle))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_supporting_label_size),
+            )
+        }
+        val texto = TextView(context).apply {
+            text = variant.texto
+            setSingleLine(true)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_small_size),
+            )
+        }
+        return row(
+            context,
+            tipo,
+            texto,
+            context.getString(R.string.vitrina_chip_product_cd, product.nombre),
+        ).apply {
+            setOnClickListener { onVariantClick?.invoke(product, variant) }
         }
     }
 

@@ -24,6 +24,14 @@ data class QuickReply(
     val texto: String,
 )
 
+/** Variante de mensaje de un producto (04.10 flujo B, pantalla B5). */
+data class MessageVariant(
+    val id: String,
+    val itemId: String,
+    val tipo: String,
+    val texto: String,
+)
+
 /**
  * Unico acceso a la base de Vitrina (SQLDelight). Es propiedad del proceso del
  * IME: lo crea SalesIME y lo comparten las superficies via VitrinaHost.
@@ -44,6 +52,8 @@ class CatalogRepository(context: Context) {
     fun allItems(): List<CatalogItem> = queries.selectAllItems().executeAsList().map { it.toModel() }
 
     fun allQuickReplies(): List<QuickReply> = queries.selectAllQuickReplies().executeAsList().map { it.toModel() }
+
+    fun allMessageVariants(): List<MessageVariant> = queries.selectAllMessageVariants().executeAsList().map { it.toModel() }
 
     fun isDummy(): Boolean = queries.selectMeta().executeAsOne().es_dummy != 0L
 
@@ -71,6 +81,15 @@ class CatalogRepository(context: Context) {
                 actualizadoEn = item.actualizadoEn,
                 busqueda = searchable,
             )
+            for ((indice, variant) in item.variantes.withIndex()) {
+                queries.insertMessageVariant(
+                    id = "${item.id}::$indice",
+                    itemId = item.id,
+                    tipo = variant.tipo,
+                    texto = variant.texto,
+                    orden = indice.toLong(),
+                )
+            }
         }
         for (reply in file.respuestasRapidas) {
             queries.insertQuickReply(
@@ -102,5 +121,12 @@ private fun Catalog_item.toModel() = CatalogItem(
 private fun Quick_reply.toModel() = QuickReply(
     id = id,
     atajo = atajo,
+    texto = texto,
+)
+
+private fun Message_variant.toModel() = MessageVariant(
+    id = id,
+    itemId = item_id,
+    tipo = tipo,
     texto = texto,
 )

@@ -1,6 +1,7 @@
 package com.keyboardsales.vitrina.insert
 
 import com.keyboardsales.vitrina.data.CatalogItem
+import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -49,5 +50,45 @@ class MessageBuilderTest {
         val message = MessageBuilder.quickReplyMessage(reply)
         assertEquals("Atendemos de lunes a viernes.", message)
         assertEquals(0, Regex("https?://\\S+").findAll(message).count())
+    }
+
+    @Test
+    fun `mensaje de variante lleva una sola URL`() {
+        val variant = MessageVariant(
+            id = "edg-poltrona-chicamocha::0",
+            itemId = poltrona.id,
+            tipo = "primera_respuesta",
+            texto = "Hola! Claro, te cuento sobre la Poltrona Chicamocha:",
+        )
+        val message = MessageBuilder.variantMessage(poltrona, variant)
+        val urls = Regex("https?://\\S+").findAll(message).count()
+        assertEquals("ADR-017: una sola URL por mensaje", 1, urls)
+    }
+
+    @Test
+    fun `mensaje de variante lleva el texto de la variante`() {
+        val variant = MessageVariant(
+            id = "edg-poltrona-chicamocha::0",
+            itemId = poltrona.id,
+            tipo = "primera_respuesta",
+            texto = "Hola! Claro, te cuento sobre la Poltrona Chicamocha:",
+        )
+        val message = MessageBuilder.variantMessage(poltrona, variant)
+        assertTrue(message.contains("Poltrona Chicamocha"))
+        assertTrue(message.contains(variant.texto))
+    }
+
+    @Test
+    fun `la URL de la variante va en su propia linea al final`() {
+        val variant = MessageVariant(
+            id = "edg-poltrona-chicamocha::1",
+            itemId = poltrona.id,
+            tipo = "cierre",
+            texto = "La puedo separar con el 30% si te sirve:",
+        )
+        val message = MessageBuilder.variantMessage(poltrona, variant)
+        val lines = message.lines()
+        assertEquals(poltrona.url, lines.last())
+        assertTrue(lines.size >= 2)
     }
 }
