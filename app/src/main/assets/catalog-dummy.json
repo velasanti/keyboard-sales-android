@@ -1,0 +1,162 @@
+{
+  "$meta": {
+    "proposito": "Catalogo de prueba para el prototipo de Vitrina. Se carga en SQLDelight desde assets al primer arranque.",
+    "spec": "Obsidian: 04.10 Vitrina — Especificacion consolidada, seccion 8",
+    "escenario": "Maria (Esculturas DG) le escribe a Juan Ramirez. Es el escenario canonico del vault.",
+    "advertencia": "Este archivo NO es un catalogo real y sus URLs usan el TLD reservado .invalid a proposito: nunca resuelven. Un dummy instalado como IME real puede meter un precio inventado en un chat de trabajo, asi que mientras este cargado el teclado muestra DummyCatalogBadge.",
+    "elegido_para_romper": [
+      "items 1 y 2: prefijo colisionante y truncado identico en el chip de la barra (el bug de los chips gemelos)",
+      "item 3: mismo prefijo que 1 y 2 pero otra categoria, para ejercitar el ranking multi-categoria",
+      "item 6: sin imagen, para ejercitar ProductSelectionCard-SinImagen",
+      "items 7 y 8: alias que no comparten ninguna letra con el nombre, para ejercitar el matching por alias",
+      "item 9: precio viejo, para ejercitar UntrustedPriceChip",
+      "item 10: nombre largo, para ejercitar el truncado en el chip y en la card"
+    ]
+  },
+
+  "version": 1,
+  "generado_en": "2026-08-10T00:00:00Z",
+  "tenant": "esculturas-dg",
+  "moneda_default": "COP",
+
+  "items": [
+    {
+      "id": "edg-mesa-granada-nogal-180",
+      "nombre": "Mesa Granada Nogal 180",
+      "categoria": "Mesas",
+      "precio": 1850000,
+      "moneda": "COP",
+      "alias": ["granada 180", "mesa nogal grande", "granada nogal"],
+      "url": "https://catalogo.esculturasdg.invalid/p/mesa-granada-nogal-180?v=7",
+      "imagen": "mesa-granada-nogal-180.webp",
+      "actualizado_en": "2026-08-08T14:20:00Z"
+    },
+    {
+      "id": "edg-mesa-granada-nogal-220",
+      "nombre": "Mesa Granada Nogal 220",
+      "categoria": "Mesas",
+      "precio": 2340000,
+      "moneda": "COP",
+      "alias": ["granada 220", "mesa nogal extra", "granada grande"],
+      "url": "https://catalogo.esculturasdg.invalid/p/mesa-granada-nogal-220?v=4",
+      "imagen": "mesa-granada-nogal-220.webp",
+      "actualizado_en": "2026-08-08T14:22:00Z"
+    },
+    {
+      "id": "edg-banca-granada-roble",
+      "nombre": "Banca Granada Roble",
+      "categoria": "Bancas",
+      "precio": 780000,
+      "moneda": "COP",
+      "alias": ["banca granada", "banca roble"],
+      "url": "https://catalogo.esculturasdg.invalid/p/banca-granada-roble?v=2",
+      "imagen": "banca-granada-roble.webp",
+      "actualizado_en": "2026-07-30T09:10:00Z"
+    },
+    {
+      "id": "edg-silla-tunja-cuero",
+      "nombre": "Silla Tunja Cuero",
+      "categoria": "Sillas",
+      "precio": 420000,
+      "moneda": "COP",
+      "alias": ["tunja", "silla cuero"],
+      "url": "https://catalogo.esculturasdg.invalid/p/silla-tunja-cuero?v=11",
+      "imagen": "silla-tunja-cuero.webp",
+      "actualizado_en": "2026-08-09T11:00:00Z"
+    },
+    {
+      "id": "edg-silla-tunja-tela",
+      "nombre": "Silla Tunja Tela",
+      "categoria": "Sillas",
+      "precio": 355000,
+      "moneda": "COP",
+      "alias": ["tunja tela", "silla tela"],
+      "url": "https://catalogo.esculturasdg.invalid/p/silla-tunja-tela?v=6",
+      "imagen": "silla-tunja-tela.webp",
+      "actualizado_en": "2026-08-09T11:02:00Z"
+    },
+    {
+      "id": "edg-repisa-monserrate",
+      "nombre": "Repisa Monserrate",
+      "categoria": "Repisas",
+      "precio": 295000,
+      "moneda": "COP",
+      "alias": ["monserrate", "repisa flotante"],
+      "url": "https://catalogo.esculturasdg.invalid/p/repisa-monserrate?v=1",
+      "imagen": null,
+      "actualizado_en": "2026-08-01T16:45:00Z"
+    },
+    {
+      "id": "edg-poltrona-chicamocha",
+      "nombre": "Poltrona Chicamocha",
+      "categoria": "Poltronas",
+      "precio": 1290000,
+      "moneda": "COP",
+      "alias": ["la comoda", "poltrona grande", "sillon lectura"],
+      "url": "https://catalogo.esculturasdg.invalid/p/poltrona-chicamocha?v=3",
+      "imagen": "poltrona-chicamocha.webp",
+      "actualizado_en": "2026-08-07T08:30:00Z"
+    },
+    {
+      "id": "edg-mesa-auxiliar-zipa",
+      "nombre": "Mesa Auxiliar Zipa",
+      "categoria": "Mesas",
+      "precio": 210000,
+      "moneda": "COP",
+      "alias": ["la chiquita", "auxiliar", "mesita"],
+      "url": "https://catalogo.esculturasdg.invalid/p/mesa-auxiliar-zipa?v=9",
+      "imagen": "mesa-auxiliar-zipa.webp",
+      "actualizado_en": "2026-08-05T13:15:00Z"
+    },
+    {
+      "id": "edg-comedor-boyaca-8",
+      "nombre": "Comedor Boyaca 8 puestos",
+      "categoria": "Comedores",
+      "precio": 4650000,
+      "moneda": "COP",
+      "alias": ["boyaca 8", "comedor grande"],
+      "url": "https://catalogo.esculturasdg.invalid/p/comedor-boyaca-8?v=2",
+      "imagen": "comedor-boyaca-8.webp",
+      "actualizado_en": "2026-05-02T10:00:00Z"
+    },
+    {
+      "id": "edg-biblioteca-catedral-modular",
+      "nombre": "Biblioteca Catedral Modular de Cinco Cuerpos",
+      "categoria": "Bibliotecas",
+      "precio": 3980000,
+      "moneda": "COP",
+      "alias": ["catedral", "biblioteca modular", "la grande de cinco"],
+      "url": "https://catalogo.esculturasdg.invalid/p/biblioteca-catedral-modular?v=5",
+      "imagen": "biblioteca-catedral-modular.webp",
+      "actualizado_en": "2026-08-06T17:40:00Z"
+    }
+  ],
+
+  "respuestas_rapidas": [
+    {
+      "id": "rr-horario",
+      "atajo": "horario",
+      "texto": "Atendemos de lunes a viernes de 8:00 a 6:00 y sabados de 9:00 a 1:00."
+    },
+    {
+      "id": "rr-garantia",
+      "atajo": "garantia",
+      "texto": "Todos nuestros muebles tienen 2 anos de garantia contra defectos de fabricacion."
+    },
+    {
+      "id": "rr-envio",
+      "atajo": "envio",
+      "texto": "El envio dentro de la ciudad es gratis por compras superiores a $1.000.000. Fuera de la ciudad se cotiza aparte."
+    },
+    {
+      "id": "rr-cuotas",
+      "atajo": "cuotas",
+      "texto": "Manejamos pago hasta en 12 cuotas con tarjeta de credito, y separas con el 30%."
+    },
+    {
+      "id": "rr-medidas",
+      "atajo": "medidas",
+      "texto": "Te comparto las medidas exactas para que confirmes que te sirve el espacio."
+    }
+  ]
+}

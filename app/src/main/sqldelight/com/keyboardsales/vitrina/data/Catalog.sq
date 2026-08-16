@@ -1,0 +1,64 @@
+-- Vitrina: catalogo de la empresa y respuestas rapidas.
+-- El catalogo llega DUMMY al primer arranque desde app/src/main/assets/catalog-dummy.json
+-- (espejo de design/catalog-dummy.json). Mientras catalog_meta.es_dummy = 1 el teclado
+-- muestra DummyCatalogBadge.
+
+CREATE TABLE catalog_meta (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version INTEGER NOT NULL,
+  tenant TEXT NOT NULL,
+  moneda_default TEXT NOT NULL,
+  es_dummy INTEGER NOT NULL
+);
+
+CREATE TABLE catalog_item (
+  id TEXT PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  categoria TEXT NOT NULL,
+  precio INTEGER NOT NULL,
+  moneda TEXT NOT NULL,
+  url TEXT NOT NULL,
+  imagen TEXT,
+  actualizado_en TEXT NOT NULL,
+  busqueda TEXT NOT NULL
+);
+
+CREATE TABLE quick_reply (
+  id TEXT PRIMARY KEY,
+  atajo TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  busqueda TEXT NOT NULL
+);
+
+insertMeta:
+INSERT OR REPLACE INTO catalog_meta(id, version, tenant, moneda_default, es_dummy)
+VALUES (1, :version, :tenant, :monedaDefault, :esDummy);
+
+insertItem:
+INSERT OR REPLACE INTO catalog_item(
+  id, nombre, categoria, precio, moneda, url, imagen, actualizado_en, busqueda
+) VALUES (:id, :nombre, :categoria, :precio, :moneda, :url, :imagen, :actualizadoEn, :busqueda);
+
+insertQuickReply:
+INSERT OR REPLACE INTO quick_reply(id, atajo, texto, busqueda)
+VALUES (:id, :atajo, :texto, :busqueda);
+
+selectMeta:
+SELECT * FROM catalog_meta WHERE id = 1;
+
+selectAllItems:
+SELECT * FROM catalog_item ORDER BY nombre;
+
+selectAllQuickReplies:
+SELECT * FROM quick_reply ORDER BY atajo;
+
+countItems:
+SELECT COUNT(*) FROM catalog_item;
+
+countQuickReplies:
+SELECT COUNT(*) FROM quick_reply;
+
+deleteAll:
+DELETE FROM catalog_item;
+DELETE FROM quick_reply;
+DELETE FROM catalog_meta;

@@ -349,3 +349,19 @@ KS_API_BASE_URL_DEBUG=
 ```
 
 No hay más. **No existe ninguna clave de proveedor de IA en el cliente**, por diseño (§Lo que este producto NUNCA hace, punto 5).
+
+---
+
+## Criterio de verificación antes de reportar "Done" (obligatorio)
+
+No declares una tarea terminada, ni digas "listo"/"completado"/"commiteado" hasta haber verificado cada uno de estos puntos y mostrado el output real (no un resumen narrado):
+
+1. **Build**: `./gradlew assembleDebug` — mostrar que terminó sin error.
+2. **Tests**: `./gradlew test` (o el subset relevante) — mostrar el conteo real de tests pasados/fallados, no solo "tests verdes".
+3. **Estado de git real** (no lo que "creés" que pasó):
+   - `git status` — árbol limpio o cambios esperados, explícitamente.
+   - `git log --oneline -3` — el commit que decís que existe, existe.
+   - `git log origin/<rama>..HEAD --oneline` — si hay commits sin pushear, decilo explícitamente y pusheá antes de reportar terminado.
+4. Si el paso implica un fix de UI/interacción: no alcanza con "debería funcionar ahora" — hay que describir qué comportamiento específico verificaste (o pedir que el humano lo confirme en dispositivo antes de cerrar el ticket).
+
+Si cualquiera de estos falla, no digas "Done" — seguí iterando o reportá explícitamente el bloqueo. "Terminé" sin este chequeo no es una respuesta válida.

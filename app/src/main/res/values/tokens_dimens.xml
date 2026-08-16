@@ -42,7 +42,7 @@
     <dimen name="kb_bar_pad_h">8dp</dimen>
     <dimen name="kb_bar_gap">6dp</dimen>
     <dimen name="kb_chip_height">36dp</dimen>
-    <dimen name="kb_anchor_size">40dp</dimen>
+    <dimen name="kb_anchor_size">48dp</dimen>
     <dimen name="kb_row_height">46dp</dimen>
     <integer name="kb_row_count">4</integer>
     <dimen name="kb_key_gutter">4dp</dimen>
@@ -57,6 +57,7 @@
     <dimen name="kb_card_image_height">88dp</dimen>
     <dimen name="kb_confirm_height_min">180dp</dimen>
     <dimen name="kb_bar_notice_height">48dp</dimen>
+    <dimen name="kb_bar_expanded_min_height">640dp</dimen>
     <integer name="z_base">0</integer>
     <integer name="z_bar">10</integer>
     <integer name="z_sticky">20</integer>

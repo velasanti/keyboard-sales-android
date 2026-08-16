@@ -54,7 +54,7 @@ object Dim {
     val kbBarPadH = 8.dp
     val kbBarGap = 6.dp
     val kbChipHeight = 36.dp
-    val kbAnchorSize = 40.dp
+    val kbAnchorSize = 48.dp
     val kbRowHeight = 46.dp
     val kbRowCount = 4
     val kbKeyGutter = 4.dp
@@ -69,6 +69,7 @@ object Dim {
     val kbCardImageHeight = 88.dp
     val kbConfirmHeightMin = 180.dp
     val kbBarNoticeHeight = 48.dp
+    val kbBarExpandedMinHeight = 640.dp
     val zBase = 0
     val zBar = 10
     val zSticky = 20
