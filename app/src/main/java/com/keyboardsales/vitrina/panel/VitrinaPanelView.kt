@@ -20,7 +20,7 @@ import helium314.keyboard.latin.R
  */
 class VitrinaPanelView(context: Context) : LinearLayout(context) {
 
-    private val list = LinearLayout(context)
+    private val list = LinearLayout(context).apply { orientation = VERTICAL }
 
     var onProductClick: ((CatalogItem) -> Unit)? = null
     var onQuickReplyClick: ((QuickReply) -> Unit)? = null

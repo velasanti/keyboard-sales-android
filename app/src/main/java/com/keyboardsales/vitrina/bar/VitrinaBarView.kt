@@ -23,10 +23,6 @@ class VitrinaBarView(context: Context) : FrameLayout(context) {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
     }
-    private val actionRow = HorizontalScrollView(context).apply {
-        isHorizontalScrollBarEnabled = false
-        isFillViewport = true
-    }
     private val actionView = VitrinaActionView(context)
 
     init {
@@ -40,16 +36,8 @@ class VitrinaBarView(context: Context) : FrameLayout(context) {
                 Gravity.CENTER_VERTICAL,
             ),
         )
-        actionRow.addView(
-            actionView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER_VERTICAL,
-            ),
-        )
-        addView(chipsRow)
-        addView(actionRow)
+        addView(chipsRow, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        addView(actionView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         showChips()
     }
 
@@ -105,11 +93,11 @@ class VitrinaBarView(context: Context) : FrameLayout(context) {
 
     fun showChips() {
         chipsRow.visibility = VISIBLE
-        actionRow.visibility = GONE
+        actionView.visibility = GONE
     }
 
     fun showAction() {
         chipsRow.visibility = GONE
-        actionRow.visibility = VISIBLE
+        actionView.visibility = VISIBLE
     }
 }
