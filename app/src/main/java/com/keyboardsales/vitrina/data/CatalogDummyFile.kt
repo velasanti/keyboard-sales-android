@@ -39,6 +39,13 @@ data class CatalogDummyItem(
     val url: String,
     val imagen: String? = null,
     @SerialName("actualizado_en") val actualizadoEn: String,
+    val variantes: List<CatalogDummyMessageVariant> = emptyList(),
+)
+
+@Serializable
+data class CatalogDummyMessageVariant(
+    val tipo: String,
+    val texto: String,
 )
 
 @Serializable

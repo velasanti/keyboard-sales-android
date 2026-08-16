@@ -77,4 +77,17 @@ class CatalogDummyFileTest {
             )
         }
     }
+
+    @Test
+    fun `dos items con variantes y el resto sin ellas`() {
+        val catalog = load()
+        val mesa = catalog.items.first { it.id == "edg-mesa-granada-nogal-180" }
+        val poltrona = catalog.items.first { it.id == "edg-poltrona-chicamocha" }
+        assertEquals(3, mesa.variantes.size)
+        assertEquals(2, poltrona.variantes.size)
+        for (item in catalog.items) {
+            if (item.id == "edg-mesa-granada-nogal-180" || item.id == "edg-poltrona-chicamocha") continue
+            assertTrue("${item.id} no debe tener variantes", item.variantes.isEmpty())
+        }
+    }
 }
