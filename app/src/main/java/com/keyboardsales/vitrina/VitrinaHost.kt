@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.bar.BarLayout
 import com.keyboardsales.vitrina.bar.BarMode
@@ -333,8 +334,8 @@ class VitrinaHost(private val ime: SalesIME) {
 
         when (currentBarLayout(container)) {
             BarLayout.EXPANDED_ROW -> {
-                container.layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
+                container.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
                     container.resources.getDimensionPixelSize(R.dimen.kb_bar_height_expanded),
                 )
                 suggestion.layoutParams = FrameLayout.LayoutParams(
@@ -350,9 +351,9 @@ class VitrinaHost(private val ime: SalesIME) {
                 )
             }
             BarLayout.OVERLAY_SUGGESTIONS -> {
-                container.layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT,
+                container.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT,
                 )
                 suggestion.visibility = View.GONE
                 bar.layoutParams = FrameLayout.LayoutParams(
@@ -373,8 +374,8 @@ class VitrinaHost(private val ime: SalesIME) {
         val bar = barView ?: return
 
         val barHeight = container.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height)
-        container.layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
+        container.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
             barHeight,
         )
         suggestion.layoutParams = FrameLayout.LayoutParams(
