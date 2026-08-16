@@ -8,6 +8,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.keyboardsales.vitrina.bar.VitrinaChipView
+import com.keyboardsales.vitrina.data.CatalogGrouping
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.PriceFormatter
@@ -40,11 +41,13 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     fun populate(products: List<CatalogItem>, replies: List<QuickReply>) {
         val context = context
         list.removeAllViews()
-        list.addView(sectionLabel(context, R.string.vitrina_section_products))
-        for (product in products) {
-            list.addView(productRow(context, product))
+        for ((categoria, grouped) in CatalogGrouping.byCategory(products)) {
+            list.addView(sectionLabel(context, categoria))
+            for (product in grouped) {
+                list.addView(productRow(context, product))
+            }
         }
-        list.addView(sectionLabel(context, R.string.vitrina_section_quick_replies))
+        list.addView(sectionLabel(context, context.getString(R.string.vitrina_section_quick_replies)))
         for (reply in replies) {
             list.addView(quickReplyRow(context, reply))
         }
@@ -83,9 +86,9 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
         }
     }
 
-    private fun sectionLabel(context: Context, textRes: Int): TextView =
+    private fun sectionLabel(context: Context, text: String): TextView =
         TextView(context).apply {
-            setText(textRes)
+            setText(text)
             setSingleLine(true)
             maxLines = 1
             setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
