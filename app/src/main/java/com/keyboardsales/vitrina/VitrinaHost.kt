@@ -15,6 +15,7 @@ import com.keyboardsales.vitrina.bar.DummyCatalogBadgeView
 import com.keyboardsales.vitrina.bar.VitrinaBarView
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.CatalogRepository
+import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.InsertController
 import com.keyboardsales.vitrina.insert.MessageBuilder
@@ -251,6 +252,14 @@ class VitrinaHost(private val ime: SalesIME) {
             barView?.showConfirm(message)
             showBar()
         }
+        panel.onVariantClick = variant@{ item, variant ->
+            val message = MessageBuilder.variantMessage(item, variant)
+            if (message.isEmpty()) return@variant
+            pendingMessage = message
+            pendingDeleteLength = 0
+            barView?.showConfirm(message)
+            showBar()
+        }
         panel.onClose = { hidePanel() }
     }
 
@@ -266,7 +275,8 @@ class VitrinaHost(private val ime: SalesIME) {
         searchExecutor.execute {
             val products = repository.allItems()
             val replies = repository.allQuickReplies()
-            mainHandler.post { panel.populate(products, replies) }
+            val variants = repository.allMessageVariants()
+            mainHandler.post { panel.populate(products, replies, variants) }
         }
     }
 
