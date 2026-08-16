@@ -30,6 +30,14 @@ CREATE TABLE quick_reply (
   busqueda TEXT NOT NULL
 );
 
+CREATE TABLE message_variant (
+  id TEXT PRIMARY KEY,
+  item_id TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  orden INTEGER NOT NULL
+);
+
 insertMeta:
 INSERT OR REPLACE INTO catalog_meta(id, version, tenant, moneda_default, es_dummy)
 VALUES (1, :version, :tenant, :monedaDefault, :esDummy);
@@ -52,6 +60,13 @@ SELECT * FROM catalog_item ORDER BY nombre;
 selectAllQuickReplies:
 SELECT * FROM quick_reply ORDER BY atajo;
 
+insertMessageVariant:
+INSERT OR REPLACE INTO message_variant(id, item_id, tipo, texto, orden)
+VALUES (:id, :itemId, :tipo, :texto, :orden);
+
+selectAllMessageVariants:
+SELECT * FROM message_variant ORDER BY item_id, orden;
+
 countItems:
 SELECT COUNT(*) FROM catalog_item;
 
@@ -61,4 +76,5 @@ SELECT COUNT(*) FROM quick_reply;
 deleteAll:
 DELETE FROM catalog_item;
 DELETE FROM quick_reply;
+DELETE FROM message_variant;
 DELETE FROM catalog_meta;

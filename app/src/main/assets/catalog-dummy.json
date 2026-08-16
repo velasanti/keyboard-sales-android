@@ -10,7 +10,9 @@
       "item 6: sin imagen, para ejercitar ProductSelectionCard-SinImagen",
       "items 7 y 8: alias que no comparten ninguna letra con el nombre, para ejercitar el matching por alias",
       "item 9: precio viejo, para ejercitar UntrustedPriceChip",
-      "item 10: nombre largo, para ejercitar el truncado en el chip y en la card"
+      "item 10: nombre largo, para ejercitar el truncado en el chip y en la card",
+      "item 1: 3 variantes de mensaje, para ejercitar el selector de variantes",
+      "item 7: 2 variantes, para evitar el supuesto de que siempre son 3"
     ]
   },
 
@@ -29,7 +31,12 @@
       "alias": ["granada 180", "mesa nogal grande", "granada nogal"],
       "url": "https://catalogo.esculturasdg.invalid/p/mesa-granada-nogal-180?v=7",
       "imagen": "mesa-granada-nogal-180.webp",
-      "actualizado_en": "2026-08-08T14:20:00Z"
+      "actualizado_en": "2026-08-08T14:20:00Z",
+      "variantes": [
+        { "tipo": "primera_respuesta", "texto": "Hola! Sí, la tenemos disponible en nogal. Te paso los detalles:" },
+        { "tipo": "precio", "texto": "La Mesa Granada Nogal 180 está en $1.850.000, incluye envío a Bogotá:" },
+        { "tipo": "cierre", "texto": "Si te sirve, la puedo dejar apartada hoy mismo. Te paso el link:" }
+      ]
     },
     {
       "id": "edg-mesa-granada-nogal-220",
@@ -95,7 +102,11 @@
       "alias": ["la comoda", "poltrona grande", "sillon lectura"],
       "url": "https://catalogo.esculturasdg.invalid/p/poltrona-chicamocha?v=3",
       "imagen": "poltrona-chicamocha.webp",
-      "actualizado_en": "2026-08-07T08:30:00Z"
+      "actualizado_en": "2026-08-07T08:30:00Z",
+      "variantes": [
+        { "tipo": "primera_respuesta", "texto": "¡Hola! Claro, te cuento sobre la Poltrona Chicamocha:" },
+        { "tipo": "cierre", "texto": "La puedo separar con el 30% si te sirve. Te paso el link:" }
+      ]
     },
     {
       "id": "edg-mesa-auxiliar-zipa",
