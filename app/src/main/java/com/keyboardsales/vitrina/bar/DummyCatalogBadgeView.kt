@@ -20,8 +20,8 @@ import helium314.keyboard.latin.R
 class DummyCatalogBadgeView(context: Context) : TextView(context) {
 
     init {
-        text = context.getString(R.string.vitrina_badge_dummy)
-        contentDescription = text
+        text = context.getString(R.string.vitrina_badge_dummy_short)
+        contentDescription = context.getString(R.string.vitrina_badge_dummy)
         val displayContext = context
         setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
