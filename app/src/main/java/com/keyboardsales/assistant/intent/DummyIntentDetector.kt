@@ -17,6 +17,12 @@ package com.keyboardsales.assistant.intent
  *   4. NONE    — ningun disparador
  *
  * Las tildes se normalizan para que "cotizame" y "cotización" matcheen igual.
+ *
+ * LIMITACION CONOCIDA (no bloqueante, se corrige en Fase 2b con el LLM real):
+ * el matching por substring puede dar falsos positivos con palabras ambiguas.
+ * Ej. "orden" matchea ACTION aunque el vendedor diga "en orden de trabajo";
+ * "cuota" puede aparecer en un contexto que no es de financiamiento. Es el
+ * costo del dummy por palabras clave; el LLM real desambigua por contexto.
  */
 object DummyIntentDetector {
 

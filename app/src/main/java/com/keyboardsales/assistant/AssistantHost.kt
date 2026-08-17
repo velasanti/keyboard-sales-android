@@ -46,6 +46,7 @@ class AssistantHost(
 
     private val searchExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var sendSequence = 0
 
     /** Si el teclado captura hacia el cuadro de ✨ en vez de al campo anfitrion. */
     val isCaptureActive: Boolean get() = layerActive
@@ -158,6 +159,7 @@ class AssistantHost(
         val layer = layerView ?: return
         val text = layer.currentInput()
         if (text.isBlank()) return
+        val seq = ++sendSequence
         searchExecutor.execute {
             val intent = DummyIntentDetector.detect(text)
             val line = when (intent.type) {
@@ -166,7 +168,12 @@ class AssistantHost(
                 AssistantIntentType.ACTION -> "→ Acción (${intent.matchedKeyword})"
                 AssistantIntentType.NONE -> "No entendí todavía (dummy)"
             }
-            mainHandler.post { layer.addHistory(line) }
+            // Descarta el resultado si entre tanto hubo un envío mas nuevo: la
+            // clasificacion vieja nunca postea despues de la actual (anti-carrera
+            // de doble envío). La clasificacion es por envío, no por pulsación.
+            mainHandler.post {
+                if (seq == sendSequence) layer.addHistory(line)
+            }
         }
     }
 
