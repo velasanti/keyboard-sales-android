@@ -120,24 +120,26 @@ class AssistantHost(
         }
 
         val assistantAnchor = android.widget.TextView(context).apply {
+            // Mismo mecanismo que el ☰ (glifo de TEXTO, no vector): el vector
+            // como foreground no pinto su relleno (evidencia: 0 px oscuros en la
+            // pill), mientras el glifo de texto ☰ si pinta. Se usa el simbolo de
+            // estrella de 4 puntas U+2726, monochrome como ☰ (no emoji de color),
+            // que renderiza con ancho real y contrasta (content_primary sobre
+            // surface_raised).
+            text = "✦"
+            gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
             setSingleLine(true)
             maxLines = 1
-            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_large_size),
+            )
             background = anchorBackground(context)
             contentDescription = context.getString(R.string.assistant_anchor_open)
             setOnClickListener { toggleLayer() }
-        }
-        // El glifo ✨ (U+2728) como texto puede renderizar de ancho CERO en
-        // TextView (por eso el ancla no se veia aunque ☰ si). Se dibuja el
-        // icono como vector con tint del token; en API < 23 (minSdk 21) no hay
-        // foreground, se deja el glifo como fallback.
-        if (android.os.Build.VERSION.SDK_INT >= 23) {
-            assistantAnchor.foreground = ContextCompat.getDrawable(context, R.drawable.ic_sparkle)
-            assistantAnchor.foregroundGravity = Gravity.CENTER
-        } else {
-            assistantAnchor.text = "✨"
         }
 
         val bar = LinearLayout(context).apply {
