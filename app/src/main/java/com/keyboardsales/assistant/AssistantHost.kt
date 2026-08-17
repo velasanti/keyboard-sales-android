@@ -105,9 +105,9 @@ class AssistantHost(
         val lp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
+            Gravity.TOP or Gravity.START,
         ).apply {
-            marginEnd = pad
+            marginStart = pad
             topMargin = pad
         }
         wrapper.addView(bar, lp)
