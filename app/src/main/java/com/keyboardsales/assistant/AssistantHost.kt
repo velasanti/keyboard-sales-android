@@ -159,6 +159,38 @@ class AssistantHost(
         }
         wrapper.addView(bar, lp)
         Log.d(TAG, "injectAnchorBar: anclas agregadas al wrapper=${bar.childCount} (☰ y ✨)")
+        bar.post {
+            val catalog = bar.getChildAt(0)
+            val assistant = bar.getChildAt(1)
+            val sparkle = ContextCompat.getDrawable(wrapper.context, R.drawable.ic_sparkle)
+            Log.d(
+                TAG,
+                "anchorBar: wrapper(${wrapper.javaClass.simpleName}) hijos=${wrapper.childCount} " +
+                    "bounds=[${wrapper.left},${wrapper.top}]-[${wrapper.right},${wrapper.bottom}]",
+            )
+            Log.d(
+                TAG,
+                "anchorBar: bar medidas=${bar.width}x${bar.height} X=${bar.x} Y=${bar.y} " +
+                    "elevation=${bar.elevation}",
+            )
+            Log.d(
+                TAG,
+                "anchorBar: ☰ (child0) medidas=${catalog.width}x${catalog.height} " +
+                    "X=${catalog.x} Y=${catalog.y} left=${catalog.left} top=${catalog.top} " +
+                    "elevation=${catalog.elevation}",
+            )
+            Log.d(
+                TAG,
+                "anchorBar: ✨ (child1) medidas=${assistant.width}x${assistant.height} " +
+                    "X=${assistant.x} Y=${assistant.y} left=${assistant.left} top=${assistant.top} " +
+                    "elevation=${assistant.elevation}",
+            )
+            Log.d(
+                TAG,
+                "anchorBar: ✨ foreground=${assistant.foreground} " +
+                    "sparkleDrawable=${sparkle} intrinsic=${sparkle?.intrinsicWidth}x${sparkle?.intrinsicHeight}",
+            )
+        }
     }
 
     private fun anchorBackground(context: android.content.Context): android.graphics.drawable.GradientDrawable {
