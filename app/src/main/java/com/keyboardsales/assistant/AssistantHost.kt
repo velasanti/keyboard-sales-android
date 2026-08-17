@@ -9,6 +9,8 @@ import android.view.accessibility.AccessibilityManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
+import com.keyboardsales.assistant.action.ActionType
+import com.keyboardsales.assistant.action.DummyActionResolver
 import com.keyboardsales.assistant.consult.DummyConsultant
 import com.keyboardsales.assistant.intent.AssistantIntentType
 import com.keyboardsales.assistant.intent.DummyIntentDetector
@@ -54,6 +56,7 @@ class AssistantHost(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var sendSequence = 0
     private var pendingMessage: String? = null
+    private var pendingActionType: ActionType? = null
     private var insertedLength = 0
     private var undoShowing = false
     private var undoRunnable: Runnable? = null
@@ -76,7 +79,8 @@ class AssistantHost(
             visibility = View.GONE
             onClose = { hideLayer() }
             onSend = { handleSend() }
-            onConfirm = { performInsert() }
+            onConfirm = { onConfirmCard() }
+            onCancelConfirm = { cancelConfirm() }
             onUndo = { performUndo() }
         }
         layerView = layer
@@ -267,7 +271,21 @@ class AssistantHost(
                     }
                     return@execute
                 }
-                AssistantIntentType.ACTION -> "→ Acción (${intent.matchedKeyword})"
+                // Paso 6: la accion ejecutable exige confirmacion explicita ADR-016.
+                // En esta fase no hay efecto real (no PDF, no backend); se construye
+                // la UI de confirmacion, la pieza que despues nunca se salta.
+                AssistantIntentType.ACTION -> {
+                    val proposal = DummyActionResolver.resolve(text)
+                    val label = actionLabel(proposal.type)
+                    val summary = ime.getString(R.string.assistant_action_confirm, label)
+                    mainHandler.post {
+                        if (seq == sendSequence) {
+                            pendingActionType = proposal.type
+                            layer.showConfirm(summary)
+                        }
+                    }
+                    return@execute
+                }
                 AssistantIntentType.NONE -> "No entendí todavía (dummy)"
             }
             // Descarta el resultado si entre tanto hubo un envío mas nuevo: la
@@ -277,6 +295,42 @@ class AssistantHost(
                 if (seq == sendSequence) layer.addHistory(line)
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Confirmacion ADR-016: dispatch REDACT (inserta) vs ACTION (sin efecto)
+    // ------------------------------------------------------------------
+
+    /**
+     * La tarjeta de confirmacion (ADR-016) se ejecuto. Segun que este pendiente:
+     * REDACT -> inserta el mensaje al chat (Paso 4); ACTION -> accion dummy sin
+     * efecto real (Paso 6), se registra en el historial de ✨ y no toca el chat.
+     */
+    private fun onConfirmCard() {
+        val layer = layerView ?: return
+        when {
+            pendingMessage != null -> performInsert()
+            pendingActionType != null -> {
+                val type = pendingActionType!!
+                pendingActionType = null
+                layer.addHistory(ime.getString(R.string.assistant_action_done, actionLabel(type)))
+                layer.showInput()
+            }
+        }
+    }
+
+    /** Cancelar la confirmacion (ADR-016): descarta lo pendiente y vuelve al input. */
+    private fun cancelConfirm() {
+        pendingMessage = null
+        pendingActionType = null
+        layerView?.showInput()
+    }
+
+    private fun actionLabel(type: ActionType): String = when (type) {
+        ActionType.PDF -> ime.getString(R.string.assistant_action_pdf)
+        ActionType.DERIVE -> ime.getString(R.string.assistant_action_derive)
+        ActionType.ORDER -> ime.getString(R.string.assistant_action_order)
+        ActionType.GENERIC -> ime.getString(R.string.assistant_action_generic)
     }
 
     // ------------------------------------------------------------------
@@ -373,6 +427,7 @@ class AssistantHost(
         layerActive = false
         cancelPendingUndo()
         pendingMessage = null
+        pendingActionType = null
         insertedLength = 0
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return

@@ -8,4 +8,10 @@
     <string name="assistant_input_placeholder">Escribí tu consulta a la IA</string>
     <string name="assistant_consult_cuotas">Financiamiento (dummy): hasta 12 cuotas. Sobre una base de $1.850.000, 12 cuotas quedan en $154.167.</string>
     <string name="assistant_consult_fallback">Consulta de conocimiento (dummy): por ahora sé responder sobre cuotas y financiamiento.</string>
+    <string name="assistant_action_pdf">Cotización en PDF</string>
+    <string name="assistant_action_derive">Derivar a un compañero</string>
+    <string name="assistant_action_order">Orden de venta</string>
+    <string name="assistant_action_generic">Acción</string>
+    <string name="assistant_action_confirm">%1$s (dummy). En esta fase no hay efecto real que ejecutar; confirmá para registrar la acción.</string>
+    <string name="assistant_action_done">Acción confirmada (dummy, sin efecto): %1$s</string>
 </resources>

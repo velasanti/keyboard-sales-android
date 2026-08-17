@@ -33,6 +33,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     var onClose: (() -> Unit)? = null
     var onSend: (() -> Unit)? = null
     var onConfirm: (() -> Unit)? = null
+    var onCancelConfirm: (() -> Unit)? = null
     var onUndo: (() -> Unit)? = null
 
     init {
@@ -114,7 +115,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
             contentDescription = context.getString(R.string.vitrina_confirm)
             setOnClickListener { onConfirm?.invoke() }
         }
-        cancel.setOnClickListener { showInput() }
+        cancel.setOnClickListener { onCancelConfirm?.invoke() ?: showInput() }
         confirmCard.run {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
