@@ -9,6 +9,7 @@ import android.view.accessibility.AccessibilityManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
+import com.keyboardsales.assistant.consult.DummyConsultant
 import com.keyboardsales.assistant.intent.AssistantIntentType
 import com.keyboardsales.assistant.intent.DummyIntentDetector
 import com.keyboardsales.assistant.redact.DummyRedactor
@@ -253,7 +254,19 @@ class AssistantHost(
                     }
                     return@execute
                 }
-                AssistantIntentType.CONSULT -> "→ Consulta (${intent.matchedKeyword})"
+                // Paso 5: la consulta de conocimiento se responde EN EL HISTORIAL
+                // de ✨; nada se inserta al chat.
+                AssistantIntentType.CONSULT -> {
+                    val answer = DummyConsultant.answer(
+                        text,
+                        ime.getString(R.string.assistant_consult_cuotas),
+                        ime.getString(R.string.assistant_consult_fallback),
+                    )
+                    mainHandler.post {
+                        if (seq == sendSequence) layer.addHistory(answer)
+                    }
+                    return@execute
+                }
                 AssistantIntentType.ACTION -> "→ Acción (${intent.matchedKeyword})"
                 AssistantIntentType.NONE -> "No entendí todavía (dummy)"
             }

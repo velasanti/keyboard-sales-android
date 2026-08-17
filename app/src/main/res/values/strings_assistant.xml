@@ -6,4 +6,6 @@
     <string name="assistant_close">Cerrar</string>
     <string name="assistant_history_placeholder">El historial de la IA aparece acá</string>
     <string name="assistant_input_placeholder">Escribí tu consulta a la IA</string>
+    <string name="assistant_consult_cuotas">Financiamiento (dummy): hasta 12 cuotas. Sobre una base de $1.850.000, 12 cuotas quedan en $154.167.</string>
+    <string name="assistant_consult_fallback">Consulta de conocimiento (dummy): por ahora sé responder sobre cuotas y financiamiento.</string>
 </resources>
