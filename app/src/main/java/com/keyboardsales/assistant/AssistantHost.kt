@@ -113,9 +113,30 @@ class AssistantHost(
         }
         catalogAnchor.background = anchorBackground(wrapper.context)
 
-        val assistantAnchor = AssistantAnchorView(wrapper.context).apply {
+        val anchorSize = wrapper.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size)
+        val assistantAnchor = android.widget.TextView(wrapper.context).apply {
+            isClickable = true
+            isFocusable = true
+            setSingleLine(true)
+            maxLines = 1
+            gravity = Gravity.CENTER
+            background = anchorBackground(wrapper.context)
             contentDescription = wrapper.context.getString(R.string.assistant_anchor_open)
             setOnClickListener { toggleLayer() }
+            // minWidth/minHeight de respaldo: si el dibujo no se ve (ver abajo)
+            // el ancla conserva al menos su area de toque/visual minima.
+            minWidth = anchorSize
+            minHeight = anchorSize
+        }
+        // El glifo ✨ (U+2728) como texto puede renderizar de ancho CERO en
+        // TextView (por eso el ancla no se veia aunque ☰ si). Se dibuja el
+        // icono como vector con tint del token; en API < 23 (minSdk 21) no hay
+        // foreground, se deja el glifo como fallback.
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            assistantAnchor.foreground = ContextCompat.getDrawable(wrapper.context, R.drawable.ic_sparkle)
+            assistantAnchor.foregroundGravity = Gravity.CENTER
+        } else {
+            assistantAnchor.text = "✨"
         }
 
         val bar = LinearLayout(wrapper.context).apply {
@@ -137,6 +158,7 @@ class AssistantHost(
             topMargin = pad
         }
         wrapper.addView(bar, lp)
+        Log.d(TAG, "injectAnchorBar: anclas agregadas al wrapper=${bar.childCount} (☰ y ✨)")
     }
 
     private fun anchorBackground(context: android.content.Context): android.graphics.drawable.GradientDrawable {
