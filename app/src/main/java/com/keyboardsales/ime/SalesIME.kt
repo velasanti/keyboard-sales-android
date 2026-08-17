@@ -78,11 +78,13 @@ class SalesIME : LatinIME() {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         vitrinaHost.onStartInputView(editorInfo, restarting)
+        assistantHost.resetToIdle()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         vitrinaHost.onFinishInputView(finishingInput)
+        assistantHost.resetToIdle()
     }
 
     override fun onUpdateSelection(

@@ -1,16 +1,20 @@
 package com.keyboardsales.assistant
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
+import android.view.accessibility.AccessibilityManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import com.keyboardsales.assistant.intent.AssistantIntentType
 import com.keyboardsales.assistant.intent.DummyIntentDetector
+import com.keyboardsales.assistant.redact.DummyRedactor
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.VitrinaHost
+import com.keyboardsales.vitrina.insert.InsertController
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.R
@@ -47,6 +51,10 @@ class AssistantHost(
     private val searchExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var sendSequence = 0
+    private var pendingMessage: String? = null
+    private var insertedLength = 0
+    private var undoShowing = false
+    private var undoRunnable: Runnable? = null
 
     /** Si el teclado captura hacia el cuadro de ✨ en vez de al campo anfitrion. */
     val isCaptureActive: Boolean get() = layerActive
@@ -66,6 +74,8 @@ class AssistantHost(
             visibility = View.GONE
             onClose = { hideLayer() }
             onSend = { handleSend() }
+            onConfirm = { performInsert() }
+            onUndo = { performUndo() }
         }
         layerView = layer
         container.addView(
@@ -163,7 +173,18 @@ class AssistantHost(
         searchExecutor.execute {
             val intent = DummyIntentDetector.detect(text)
             val line = when (intent.type) {
-                AssistantIntentType.REDACT -> "→ Redactar (${intent.matchedKeyword})"
+                // Paso 4: la redaccion no solo se clasifica, arma el mensaje y
+                // exige confirmacion ADR-016 antes de insertar al chat.
+                AssistantIntentType.REDACT -> {
+                    val message = DummyRedactor.redact(text)
+                    mainHandler.post {
+                        if (seq == sendSequence) {
+                            pendingMessage = message
+                            layer.showConfirm(message)
+                        }
+                    }
+                    return@execute
+                }
                 AssistantIntentType.CONSULT -> "→ Consulta (${intent.matchedKeyword})"
                 AssistantIntentType.ACTION -> "→ Acción (${intent.matchedKeyword})"
                 AssistantIntentType.NONE -> "No entendí todavía (dummy)"
@@ -175,6 +196,51 @@ class AssistantHost(
                 if (seq == sendSequence) layer.addHistory(line)
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Insercion (reusa InsertController de Vitrina, no se reinventa) + Deshacer
+    // ------------------------------------------------------------------
+
+    private fun performInsert() {
+        cancelPendingUndo()
+        val layer = layerView ?: return
+        val message = pendingMessage ?: return
+        val insertResult = InsertController.insert(ime, 0, message)
+        if (insertResult < 0) return
+        insertedLength = insertResult
+        pendingMessage = null
+        undoShowing = true
+        layer.showUndo()
+        scheduleUndoTimeout()
+    }
+
+    private fun performUndo() {
+        cancelPendingUndo()
+        val layer = layerView ?: return
+        InsertController.undo(ime, insertedLength)
+        undoShowing = false
+        insertedLength = 0
+        layer.showInput()
+    }
+
+    private fun cancelPendingUndo() {
+        undoRunnable?.let { mainHandler.removeCallbacks(it) }
+        undoRunnable = null
+        undoShowing = false
+    }
+
+    private fun scheduleUndoTimeout() {
+        val layer = layerView ?: return
+        val resources = layer.resources
+        val a11y = (ime.applicationContext.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager)
+            ?.isTouchExplorationEnabled == true
+        val timeout = resources.getInteger(
+            if (a11y) R.integer.motion_undo_duration_a11y else R.integer.motion_undo_duration,
+        ).toLong()
+        val runnable = Runnable { if (undoShowing) layer.showInput() }
+        undoRunnable = runnable
+        mainHandler.postDelayed(runnable, timeout)
     }
 
     /**
@@ -206,6 +272,7 @@ class AssistantHost(
         // activar ✨. Se hace UNA vez al activar, no por pulsacion.
         ime.getCurrentInputConnection()?.finishComposingText()
         layer.clearInput()
+        layer.showInput()
 
         container.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -223,6 +290,9 @@ class AssistantHost(
     private fun hideLayer() {
         if (!layerActive) return
         layerActive = false
+        cancelPendingUndo()
+        pendingMessage = null
+        insertedLength = 0
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return
         val layer = layerView ?: return
@@ -237,6 +307,10 @@ class AssistantHost(
         )
         suggestion.visibility = View.VISIBLE
         layer.visibility = View.GONE
+    }
+
+    fun resetToIdle() {
+        if (layerActive) hideLayer()
     }
 
     companion object {

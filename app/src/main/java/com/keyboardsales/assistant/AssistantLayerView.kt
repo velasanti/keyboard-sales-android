@@ -24,11 +24,16 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     private val historyScroll = ScrollView(context)
     private val historyPlaceholder = TextView(context)
     private val inputBox = TextView(context)
+    private val confirmCard = LinearLayout(context)
+    private val confirmText = TextView(context)
+    private val undoCard = LinearLayout(context)
 
     private val input = StringBuilder()
 
     var onClose: (() -> Unit)? = null
     var onSend: (() -> Unit)? = null
+    var onConfirm: (() -> Unit)? = null
+    var onUndo: (() -> Unit)? = null
 
     init {
         orientation = VERTICAL
@@ -80,6 +85,75 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
         }
         val inputHeight = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
         addView(inputBox, LayoutParams(LayoutParams.MATCH_PARENT, inputHeight))
+
+        confirmText.run {
+            setSingleLine(true)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            gravity = Gravity.CENTER_VERTICAL
+            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_small_size),
+            )
+        }
+        val cancel = AssistantAnchorView(context).apply {
+            text = context.getString(R.string.vitrina_cancel)
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_supporting_label_size),
+            )
+            contentDescription = context.getString(R.string.vitrina_cancel)
+        }
+        val confirm = AssistantAnchorView(context).apply {
+            text = context.getString(R.string.vitrina_confirm)
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_supporting_label_size),
+            )
+            contentDescription = context.getString(R.string.vitrina_confirm)
+            setOnClickListener { onConfirm?.invoke() }
+        }
+        cancel.setOnClickListener { showInput() }
+        confirmCard.run {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+            )
+            addView(confirmText, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            addView(cancel)
+            addView(confirm)
+            visibility = GONE
+        }
+        addView(confirmCard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+
+        val undo = AssistantAnchorView(context).apply {
+            text = context.getString(R.string.vitrina_undo)
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_supporting_label_size),
+            )
+            contentDescription = context.getString(R.string.vitrina_undo)
+            setOnClickListener { onUndo?.invoke() }
+        }
+        undoCard.run {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+            )
+            addView(undo, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+            visibility = GONE
+        }
+        addView(undoCard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        showInput()
     }
 
     private fun header(context: Context): LinearLayout {
@@ -146,6 +220,29 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     }
 
     fun currentInput(): String = input.toString()
+
+    /** Confirmacion ADR-016: el mensaje redactado a la vista antes de insertar. */
+    fun showConfirm(message: String) {
+        confirmText.text = message
+        confirmText.contentDescription = message
+        inputBox.visibility = GONE
+        confirmCard.visibility = VISIBLE
+        undoCard.visibility = GONE
+    }
+
+    /** Deshacer: la insercion ya ocurrio, se ofrece revertirla. */
+    fun showUndo() {
+        inputBox.visibility = GONE
+        confirmCard.visibility = GONE
+        undoCard.visibility = VISIBLE
+    }
+
+    /** Vuelve al cuadro de texto (despues de cancelar o deshacer). */
+    fun showInput() {
+        confirmCard.visibility = GONE
+        undoCard.visibility = GONE
+        inputBox.visibility = VISIBLE
+    }
 
     /**
      * Agrega una fila al historial de la IA (respuesta / resultado). La primera
