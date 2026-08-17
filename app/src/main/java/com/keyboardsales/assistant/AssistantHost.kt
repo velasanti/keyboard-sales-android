@@ -7,6 +7,8 @@ import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.VitrinaHost
+import helium314.keyboard.event.Event
+import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.Log
 
@@ -36,6 +38,9 @@ class AssistantHost(
     private var layerView: AssistantLayerView? = null
     private var layerActive = false
 
+    /** Si el teclado captura hacia el cuadro de ✨ en vez de al campo anfitrion. */
+    val isCaptureActive: Boolean get() = layerActive
+
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
         suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
@@ -50,6 +55,7 @@ class AssistantHost(
         val layer = AssistantLayerView(container.context).apply {
             visibility = View.GONE
             onClose = { hideLayer() }
+            onSend = { /* Paso 3: correr el intent dummy sobre [input] y renderizar en el historial */ }
         }
         layerView = layer
         container.addView(
@@ -133,11 +139,35 @@ class AssistantHost(
         if (layerActive) hideLayer() else showLayer()
     }
 
+    /**
+     * Redirige un [Event] del QWERTY al cuadro de ✨. Devuelve true si lo consumio.
+     * Llamado desde [SalesIME.onEvent] solo cuando [isCaptureActive].
+     *
+     * El texto NUNCA llega al campo de la app anfitriona: al no reenviar el evento
+     * al motor, el InputConnection del chat no recibe commit ni delete (04.4 §3).
+     */
+    fun onAssistantEvent(event: Event): Boolean {
+        val layer = layerView ?: return false
+        when {
+            event.keyCode == KeyCode.DELETE -> layer.inputBackspace()
+            event.codePoint == '\n'.code -> layer.send()
+            event.codePoint >= 0 && event.codePoint != Event.NOT_A_CODE_POINT -> layer.inputCharacter(event.codePoint)
+            else -> return false
+        }
+        return true
+    }
+
     private fun showLayer() {
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return
         val layer = layerView ?: return
         layerActive = true
+
+        // Cierra la composicion pendiente del chat (la "media palabra" con subrayado
+        // de autocorreccion) que el vendedor pudo dejar a medio escribir antes de
+        // activar ✨. Se hace UNA vez al activar, no por pulsacion.
+        ime.getCurrentInputConnection()?.finishComposingText()
+        layer.clearInput()
 
         container.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,

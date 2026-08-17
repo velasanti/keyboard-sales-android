@@ -8,6 +8,7 @@ import com.keyboardsales.assistant.AssistantHost
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
+import helium314.keyboard.event.Event
 import helium314.keyboard.latin.LatinIME
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -58,6 +59,20 @@ class SalesIME : LatinIME() {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
         assistantHost.onInputView(view)
+    }
+
+    /**
+     * Captura de la capa ✨ (Paso 2): cuando el asistente esta activo, el QWERTY
+     * escribe al cuadro propio de ✨ y NUNCA al campo de la app anfitriona.
+     * Punto de enganche aditivo: el motor no se toca, solo no se le alimenta input
+     * mientras la capa ✨ compone (familia 04.10 §9.6.2).
+     */
+    override fun onEvent(event: Event) {
+        if (assistantHost.isCaptureActive) {
+            assistantHost.onAssistantEvent(event)
+        } else {
+            super.onEvent(event)
+        }
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {

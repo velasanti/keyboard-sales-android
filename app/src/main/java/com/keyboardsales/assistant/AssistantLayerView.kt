@@ -21,7 +21,10 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     private val historyPlaceholder = TextView(context)
     private val inputBox = TextView(context)
 
+    private val input = StringBuilder()
+
     var onClose: (() -> Unit)? = null
+    var onSend: (() -> Unit)? = null
 
     init {
         orientation = VERTICAL
@@ -100,6 +103,47 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
             addView(title, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             addView(close)
             setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Captura de entrada del QWERTY (Paso 2) — el texto vive en [input],
+    // nunca en el campo de la app anfitriona.
+    // ------------------------------------------------------------------
+
+    fun inputCharacter(codePoint: Int) {
+        if (codePoint < 0) return
+        val ch = codePoint.toChar()
+        if (!ch.isDefined() || ch == '\n') return
+        input.append(ch)
+        renderInput()
+    }
+
+    fun inputBackspace() {
+        if (input.isEmpty()) return
+        input.deleteCharAt(input.length - 1)
+        renderInput()
+    }
+
+    fun send() {
+        if (input.isNotEmpty()) onSend?.invoke()
+        input.clear()
+        renderInput()
+    }
+
+    fun clearInput() {
+        input.clear()
+        renderInput()
+    }
+
+    private fun renderInput() {
+        val context = context
+        if (input.isEmpty()) {
+            inputBox.setText(R.string.assistant_input_placeholder)
+            inputBox.setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
+        } else {
+            inputBox.text = input.toString()
+            inputBox.setTextColor(ContextCompat.getColor(context, R.color.content_primary))
         }
     }
 
