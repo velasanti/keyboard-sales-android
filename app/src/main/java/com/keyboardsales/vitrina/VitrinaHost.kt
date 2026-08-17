@@ -109,14 +109,16 @@ class VitrinaHost(private val ime: SalesIME) {
 
         val anchor = VitrinaAnchorView(view.context)
         anchor.contentDescription = view.context.getString(R.string.vitrina_anchor_open)
-        val pad = view.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+        // Ancla en fila superior, lado izquierdo, junto a ✨ (04.4 §3, 04.10 §2)
+        // Se superpone al QWERTY cuando Vitrina modo está activo.
+        // Visible solo cuando el modo está activo (visibility GONE cuando no).
         val lp = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
+            view.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+            view.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+            Gravity.TOP or Gravity.START,
         ).apply {
-            marginEnd = pad
-            topMargin = pad
+            marginStart = view.context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+            topMargin = view.context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
         }
         anchor.setOnClickListener { togglePanel() }
         anchorView = anchor
@@ -261,6 +263,10 @@ class VitrinaHost(private val ime: SalesIME) {
             showBar()
         }
         panel.onClose = { hidePanel() }
+
+        // El cambio de segmento (Producto/Booking/Respuestas rapidas) lo maneja
+        // VitrinaPanelView internamente sobre su propio segmentSwitch -- no se
+        // cablea de nuevo aca para no pisar esos listeners.
     }
 
     private fun showPanel() {

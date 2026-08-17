@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="vitrina_badge_dummy">Catálogo de prueba</string>
+    <string name="vitrina_badge_dummy">Producto de prueba</string>
     <string name="vitrina_badge_dummy_short">D</string>
     <string name="vitrina_chip_product_cd">Producto: %1$s</string>
     <string name="vitrina_chip_reply_cd">Respuesta rápida: /%1$s</string>
@@ -8,9 +8,20 @@
     <string name="vitrina_cancel">Cancelar</string>
     <string name="vitrina_undo">Deshacer</string>
     <string name="vitrina_sent_label">Enviado</string>
-    <string name="vitrina_anchor_open">Abrir catálogo de productos</string>
-    <string name="vitrina_anchor_close">Cerrar catálogo de productos</string>
-    <string name="vitrina_title">Catálogo</string>
+    <string name="vitrina_anchor_open">Abrir Producto</string>
+    <string name="vitrina_anchor_close">Cerrar Producto</string>
+    <string name="vitrina_title">Producto</string>
     <string name="vitrina_close">Cerrar</string>
     <string name="vitrina_section_quick_replies">Respuestas rápidas</string>
+    <string name="vitrina_switch_producto">Producto</string>
+    <string name="vitrina_switch_booking">Booking</string>
+    <string name="vitrina_switch_respuestas">Respuestas rápidas</string>
+    <string name="vitrina_switch_producto_cd">producto</string>
+    <string name="vitrina_switch_booking_cd">booking</string>
+    <string name="vitrina_switch_respuestas_cd">respuestas rápidas</string>
+    <array name="vitrina_switch_labels">
+        <item>Producto</item>
+        <item>Booking</item>
+        <item>Respuestas rápidas</item>
+    </array>
 </resources>

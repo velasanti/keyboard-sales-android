@@ -8,8 +8,10 @@ import androidx.core.content.ContextCompat
 import helium314.keyboard.latin.R
 
 /**
- * El ancla ☰ que alterna Vitrina modo. Flota en la esquina superior derecha del
- * area del teclado (ubicacion pendiente de 04.10; a verificar en A51).
+ * El ancla ☰ que alterna Vitrina modo. Está situado en la fila superior del
+ * teclado, lado izquierdo, junto al botón ✨ (Vitrina modo), según 04.10 §2 y
+ * 04.4 §3. Su posición es aditiva sobre el QWERTY: cuando Vitrina modo no está
+ * activo, el ancla es invisible (visibility GONE) y el teclado funciona normalmente.
  */
 class VitrinaAnchorView(context: Context) : TextView(context) {
 
@@ -28,8 +30,14 @@ class VitrinaAnchorView(context: Context) : TextView(context) {
         background = anchorBackground(context)
         elevation = context.resources.getInteger(R.integer.z_bar).toFloat()
         layoutParams = android.view.ViewGroup.MarginLayoutParams(
-            android.view.ViewGroup.MarginLayoutParams.WRAP_CONTENT,
             context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+            context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+        )
+        setPadding(
+            context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+            0,
+            0,
+            0,
         )
     }
 
