@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import com.keyboardsales.assistant.AssistantHost
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
@@ -23,6 +24,7 @@ import java.util.concurrent.Executors
 class SalesIME : LatinIME() {
 
     private lateinit var vitrinaHost: VitrinaHost
+    private lateinit var assistantHost: AssistantHost
     private lateinit var catalogRepository: CatalogRepository
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -31,6 +33,7 @@ class SalesIME : LatinIME() {
     override fun onCreate() {
         super.onCreate()
         vitrinaHost = VitrinaHost(this)
+        assistantHost = AssistantHost(this, vitrinaHost)
         catalogRepository = CatalogRepository(applicationContext)
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
@@ -54,6 +57,7 @@ class SalesIME : LatinIME() {
     override fun setInputView(view: View) {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
+        assistantHost.onInputView(view)
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {

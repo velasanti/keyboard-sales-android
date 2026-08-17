@@ -106,21 +106,6 @@ class VitrinaHost(private val ime: SalesIME) {
         wirePanelCallbacks(panel)
         panelView = panel
         wrapper.addView(panel)
-
-        val anchor = VitrinaAnchorView(view.context)
-        anchor.contentDescription = view.context.getString(R.string.vitrina_anchor_open)
-        val pad = view.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
-        val lp = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
-        ).apply {
-            marginEnd = pad
-            topMargin = pad
-        }
-        anchor.setOnClickListener { togglePanel() }
-        anchorView = anchor
-        wrapper.addView(anchor, lp)
     }
 
     fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -290,7 +275,7 @@ class VitrinaHost(private val ime: SalesIME) {
     }
 
     /** El chip de la barra y el ancla comparten la entrada al modo (04.10). */
-    private fun togglePanel() {
+    fun togglePanel() {
         when (PanelToggle.next(panelVisible)) {
             PanelAction.SHOW -> showPanel()
             PanelAction.HIDE -> hidePanel()

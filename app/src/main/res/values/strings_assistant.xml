@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_anchor_open">Abrir asistente de ventas</string>
+    <string name="assistant_anchor_close">Cerrar asistente de ventas</string>
+    <string name="assistant_title">Asistente de ventas</string>
+    <string name="assistant_close">Cerrar</string>
+    <string name="assistant_history_placeholder">El historial de la IA aparece acá</string>
+    <string name="assistant_input_placeholder">Escribí tu consulta a la IA</string>
+</resources>
