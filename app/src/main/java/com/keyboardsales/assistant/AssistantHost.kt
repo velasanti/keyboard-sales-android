@@ -163,6 +163,22 @@ class AssistantHost(
             val catalog = bar.getChildAt(0)
             val assistant = bar.getChildAt(1)
             val sparkle = ContextCompat.getDrawable(wrapper.context, R.drawable.ic_sparkle)
+            val kv = wrapper.findViewById<View>(R.id.keyboard_view)
+            Log.d(
+                TAG,
+                "layoutQ: wrapper padding L/T/R/B=" +
+                    "${wrapper.paddingLeft}/${wrapper.paddingTop}/${wrapper.paddingRight}/${wrapper.paddingBottom}",
+            )
+            Log.d(
+                TAG,
+                "layoutQ: QWERTY(keyboard_view) bounds=[${kv?.left},${kv?.top}]-[${kv?.right},${kv?.bottom}] " +
+                    "medidas=${kv?.width}x${kv?.height}",
+            )
+            Log.d(
+                TAG,
+                "layoutQ: strip_container bounds=[${stripContainer?.left},${stripContainer?.top}]-" +
+                    "[${stripContainer?.right},${stripContainer?.bottom}] h=${stripContainer?.height}",
+            )
             Log.d(
                 TAG,
                 "anchorBar: wrapper(${wrapper.javaClass.simpleName}) hijos=${wrapper.childCount} " +
