@@ -12,12 +12,17 @@ import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.PriceFormatter
+import com.keyboardsales.vitrina.switch.VitrinaSwitch
 import helium314.keyboard.latin.R
 
 /**
  * La superficie Vitrina modo: el catalogo completo (productos y respuestas
  * rapidas) en lugar del QWERTY. Se inyecta como hermano de keyboard_view dentro
  * de keyboard_view_wrapper, con el mismo patron que emoji_palettes_view.
+ *
+ * Cabecera con VitrinaSwitch (Producto | Booking | Respuestas rapidas, 2026-08-17):
+ * el segmento activo decide que se renderiza en `list`. Booking es placeholder
+ * hasta que se construya en un paso posterior.
  */
 class VitrinaPanelView(context: Context) : LinearLayout(context) {
 
@@ -28,6 +33,14 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     private var variantsByItemId: Map<String, List<MessageVariant>> = emptyMap()
     private var expandedItemId: String? = null
 
+    private enum class Segment { PRODUCTO, BOOKING, RESPUESTAS }
+    private var currentSegment = Segment.PRODUCTO
+
+    /** Selector de 3 segmentos en la cabecera. Expuesto para que VitrinaHost lo
+     * encuentre (panel.segmentSwitch), aunque el cambio de contenido lo maneja
+     * este mismo archivo internamente. */
+    val segmentSwitch = VitrinaSwitch(context)
+
     var onProductClick: ((CatalogItem) -> Unit)? = null
     var onVariantClick: ((CatalogItem, MessageVariant) -> Unit)? = null
     var onQuickReplyClick: ((QuickReply) -> Unit)? = null
@@ -36,6 +49,19 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
         orientation = VERTICAL
         setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
         addView(header(context))
+        addView(segmentSwitch, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        segmentSwitch.setOnProductSelected {
+            currentSegment = Segment.PRODUCTO
+            render()
+        }
+        segmentSwitch.setOnBookingSelected {
+            currentSegment = Segment.BOOKING
+            render()
+        }
+        segmentSwitch.setOnQuickRepliesSelected {
+            currentSegment = Segment.RESPUESTAS
+            render()
+        }
         val scroll = ScrollView(context).apply {
             isVerticalScrollBarEnabled = false
             addView(list, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
@@ -54,6 +80,14 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     private fun render() {
         val context = context
         list.removeAllViews()
+        when (currentSegment) {
+            Segment.PRODUCTO -> renderProducts(context)
+            Segment.BOOKING -> renderBookingPlaceholder(context)
+            Segment.RESPUESTAS -> renderQuickReplies(context)
+        }
+    }
+
+    private fun renderProducts(context: Context) {
         for ((categoria, grouped) in CatalogGrouping.byCategory(products)) {
             list.addView(sectionLabel(context, categoria))
             for (product in grouped) {
@@ -65,10 +99,34 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 }
             }
         }
-        list.addView(sectionLabel(context, context.getString(R.string.vitrina_section_quick_replies)))
+    }
+
+    private fun renderQuickReplies(context: Context) {
         for (reply in replies) {
             list.addView(quickReplyRow(context, reply))
         }
+    }
+
+    /** Booking no tiene UI real todavia (se construye en un paso posterior) —
+     * placeholder simple para que el segmento no quede vacio sin explicacion. */
+    private fun renderBookingPlaceholder(context: Context) {
+        val placeholder = TextView(context).apply {
+            text = "Proximamente"
+            setSingleLine(true)
+            maxLines = 1
+            setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_small_size),
+            )
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+            )
+        }
+        list.addView(placeholder)
     }
 
     private fun header(context: Context): LinearLayout {

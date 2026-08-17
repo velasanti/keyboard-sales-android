@@ -240,6 +240,11 @@ class VitrinaHost(private val ime: SalesIME) {
             barView?.showConfirm(message)
             showBar()
         }
+        panel.onClose = { hidePanel() }
+
+        // El cambio de segmento (Producto/Booking/Respuestas rapidas) lo maneja
+        // VitrinaPanelView internamente sobre su propio segmentSwitch -- no se
+        // cablea de nuevo aca para no pisar esos listeners.
     }
 
     private fun showPanel() {
