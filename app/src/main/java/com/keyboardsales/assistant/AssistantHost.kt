@@ -14,6 +14,7 @@ import com.keyboardsales.assistant.intent.DummyIntentDetector
 import com.keyboardsales.assistant.redact.DummyRedactor
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.VitrinaHost
+import com.keyboardsales.vitrina.expandTouchTarget
 import com.keyboardsales.vitrina.insert.InsertController
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
@@ -89,100 +90,101 @@ class AssistantHost(
 
     /**
      * Barra de anclas compartida [☰][✨] (04.4 §3: ☰ primero a la izquierda,
-     * ✨ a su derecha). El ☰ alterna Vitrina modo; el ✨ alterna la capa.
-     * Ubicacion flotante: misma esquina que tenia el ancla de Vitrina
-     * (SUPUESTO — NO VERIFICADO, pendiente de 04.10).
+     * ✨ a su derecha) en la barra superior (strip_container), NO flotando sobre
+     * el QWERTY. Nivel B (decisión Santi 2026-08-17): anclas de 40dp de alto
+     * (alto de la strip) con área táctil expandida a 48dp; cero cambio al
+     * presupuesto vertical en ningún estado. La coexistencia con
+     * sugerencias/chips/capa ✨ es el Paso 7, no se resuelve acá.
      */
     private fun injectAnchorBar() {
-        val wrapper = keyboardViewWrapper ?: return
+        val container = stripContainer ?: return
+        val context = container.context
+        val anchorHeight = context.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height)
+        val anchorWidth = context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size)
 
-        val catalogAnchor = android.widget.TextView(wrapper.context).apply {
+        val catalogAnchor = android.widget.TextView(context).apply {
             text = "☰"
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
             setSingleLine(true)
             maxLines = 1
-            setTextColor(ContextCompat.getColor(wrapper.context, R.color.content_primary))
+            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
             setTextSize(
                 android.util.TypedValue.COMPLEX_UNIT_PX,
-                wrapper.context.resources.getDimension(R.dimen.type_body_large_size),
+                context.resources.getDimension(R.dimen.type_body_large_size),
             )
-            contentDescription = wrapper.context.getString(R.string.vitrina_anchor_open)
+            contentDescription = context.getString(R.string.vitrina_anchor_open)
             setOnClickListener { vitrinaHost.togglePanel() }
+            background = anchorBackground(context)
         }
-        catalogAnchor.background = anchorBackground(wrapper.context)
 
-        val anchorSize = wrapper.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size)
-        val assistantAnchor = android.widget.TextView(wrapper.context).apply {
+        val assistantAnchor = android.widget.TextView(context).apply {
             isClickable = true
             isFocusable = true
             setSingleLine(true)
             maxLines = 1
             gravity = Gravity.CENTER
-            background = anchorBackground(wrapper.context)
-            contentDescription = wrapper.context.getString(R.string.assistant_anchor_open)
+            background = anchorBackground(context)
+            contentDescription = context.getString(R.string.assistant_anchor_open)
             setOnClickListener { toggleLayer() }
-            // minWidth/minHeight de respaldo: si el dibujo no se ve (ver abajo)
-            // el ancla conserva al menos su area de toque/visual minima.
-            minWidth = anchorSize
-            minHeight = anchorSize
         }
         // El glifo ✨ (U+2728) como texto puede renderizar de ancho CERO en
         // TextView (por eso el ancla no se veia aunque ☰ si). Se dibuja el
         // icono como vector con tint del token; en API < 23 (minSdk 21) no hay
         // foreground, se deja el glifo como fallback.
         if (android.os.Build.VERSION.SDK_INT >= 23) {
-            assistantAnchor.foreground = ContextCompat.getDrawable(wrapper.context, R.drawable.ic_sparkle)
+            assistantAnchor.foreground = ContextCompat.getDrawable(context, R.drawable.ic_sparkle)
             assistantAnchor.foregroundGravity = Gravity.CENTER
         } else {
             assistantAnchor.text = "✨"
         }
 
-        val bar = LinearLayout(wrapper.context).apply {
+        val bar = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             val gap = resources.getDimensionPixelSize(R.dimen.kb_bar_gap)
-            setPadding(0, 0, gap, 0)
-            addView(catalogAnchor)
-            addView(assistantAnchor)
+            addView(
+                catalogAnchor,
+                LinearLayout.LayoutParams(anchorWidth, anchorHeight).apply { marginEnd = gap },
+            )
+            addView(assistantAnchor, LinearLayout.LayoutParams(anchorWidth, anchorHeight))
         }
 
-        val pad = wrapper.context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+        val pad = context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
         val lp = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.TOP or Gravity.START,
         ).apply {
             marginStart = pad
-            topMargin = pad
         }
-        wrapper.addView(bar, lp)
-        Log.d(TAG, "injectAnchorBar: anclas agregadas al wrapper=${bar.childCount} (☰ y ✨)")
+        container.addView(bar, lp)
+
+        // Área táctil 48dp (regla 8): expande el hit rect de cada ancla. El
+        // vertical queda acotado al alto de la strip (40dp); el horizontal llega a 48dp.
+        val touchMin = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
+        container.expandTouchTarget(catalogAnchor, touchMin)
+        container.expandTouchTarget(assistantAnchor, touchMin)
+
+        Log.d(TAG, "injectAnchorBar: anclas en strip_container=${container.childCount} (☰ y ✨)")
         bar.post {
             val catalog = bar.getChildAt(0)
             val assistant = bar.getChildAt(1)
-            val sparkle = ContextCompat.getDrawable(wrapper.context, R.drawable.ic_sparkle)
-            val kv = wrapper.findViewById<View>(R.id.keyboard_view)
+            val kv = container.findViewById<View>(R.id.suggestion_strip_view)
             Log.d(
                 TAG,
-                "layoutQ: wrapper padding L/T/R/B=" +
-                    "${wrapper.paddingLeft}/${wrapper.paddingTop}/${wrapper.paddingRight}/${wrapper.paddingBottom}",
+                "layoutQ: strip_container bounds=[${container.left},${container.top}]-" +
+                    "[${container.right},${container.bottom}] h=${container.height}",
             )
             Log.d(
                 TAG,
-                "layoutQ: QWERTY(keyboard_view) bounds=[${kv?.left},${kv?.top}]-[${kv?.right},${kv?.bottom}] " +
-                    "medidas=${kv?.width}x${kv?.height}",
+                "layoutQ: wrapper(keyboard) top=${keyboardViewWrapper?.top} bottom=${keyboardViewWrapper?.bottom} " +
+                    "(strip bottom == wrapper top si no se solapan)",
             )
             Log.d(
                 TAG,
-                "layoutQ: strip_container bounds=[${stripContainer?.left},${stripContainer?.top}]-" +
-                    "[${stripContainer?.right},${stripContainer?.bottom}] h=${stripContainer?.height}",
-            )
-            Log.d(
-                TAG,
-                "anchorBar: wrapper(${wrapper.javaClass.simpleName}) hijos=${wrapper.childCount} " +
-                    "bounds=[${wrapper.left},${wrapper.top}]-[${wrapper.right},${wrapper.bottom}]",
+                "layoutQ: suggestion_strip_view bounds=[${kv?.left},${kv?.top}]-[${kv?.right},${kv?.bottom}]",
             )
             Log.d(
                 TAG,
@@ -192,19 +194,13 @@ class AssistantHost(
             Log.d(
                 TAG,
                 "anchorBar: ☰ (child0) medidas=${catalog.width}x${catalog.height} " +
-                    "X=${catalog.x} Y=${catalog.y} left=${catalog.left} top=${catalog.top} " +
-                    "elevation=${catalog.elevation}",
+                    "X=${catalog.x} Y=${catalog.y} left=${catalog.left} top=${catalog.top}",
             )
             Log.d(
                 TAG,
                 "anchorBar: ✨ (child1) medidas=${assistant.width}x${assistant.height} " +
                     "X=${assistant.x} Y=${assistant.y} left=${assistant.left} top=${assistant.top} " +
-                    "elevation=${assistant.elevation}",
-            )
-            Log.d(
-                TAG,
-                "anchorBar: ✨ foreground=${assistant.foreground} " +
-                    "sparkleDrawable=${sparkle} intrinsic=${sparkle?.intrinsicWidth}x${sparkle?.intrinsicHeight}",
+                    "foreground=${assistant.foreground}",
             )
         }
     }
