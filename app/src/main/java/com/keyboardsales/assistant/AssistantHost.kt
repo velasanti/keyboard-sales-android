@@ -1,16 +1,22 @@
 package com.keyboardsales.assistant
 
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
+import com.keyboardsales.assistant.intent.AssistantIntentType
+import com.keyboardsales.assistant.intent.DummyIntentDetector
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.VitrinaHost
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.Log
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Punto de contacto entre [SalesIME] y la capa ✨ (asistente conversacional).
@@ -38,6 +44,9 @@ class AssistantHost(
     private var layerView: AssistantLayerView? = null
     private var layerActive = false
 
+    private val searchExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     /** Si el teclado captura hacia el cuadro de ✨ en vez de al campo anfitrion. */
     val isCaptureActive: Boolean get() = layerActive
 
@@ -55,7 +64,7 @@ class AssistantHost(
         val layer = AssistantLayerView(container.context).apply {
             visibility = View.GONE
             onClose = { hideLayer() }
-            onSend = { /* Paso 3: correr el intent dummy sobre [input] y renderizar en el historial */ }
+            onSend = { handleSend() }
         }
         layerView = layer
         container.addView(
@@ -137,6 +146,28 @@ class AssistantHost(
 
     private fun toggleLayer() {
         if (layerActive) hideLayer() else showLayer()
+    }
+
+    /**
+     * Corre el intent dummy FUERA del hilo de UI (mismo criterio que la busqueda
+     * de Vitrina) y muestra el resultado en el historial de ✨. Paso 3: solo
+     * clasifica; el armado del mensaje (Paso 4), el calculo (Paso 5) y la tarjeta
+     * de accion (Paso 6) entran despues.
+     */
+    private fun handleSend() {
+        val layer = layerView ?: return
+        val text = layer.currentInput()
+        if (text.isBlank()) return
+        searchExecutor.execute {
+            val intent = DummyIntentDetector.detect(text)
+            val line = when (intent.type) {
+                AssistantIntentType.REDACT -> "→ Redactar (${intent.matchedKeyword})"
+                AssistantIntentType.CONSULT -> "→ Consulta (${intent.matchedKeyword})"
+                AssistantIntentType.ACTION -> "→ Acción (${intent.matchedKeyword})"
+                AssistantIntentType.NONE -> "No entendí todavía (dummy)"
+            }
+            mainHandler.post { layer.addHistory(line) }
+        }
     }
 
     /**

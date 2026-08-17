@@ -3,7 +3,9 @@ package com.keyboardsales.assistant
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import helium314.keyboard.latin.R
@@ -18,6 +20,8 @@ import helium314.keyboard.latin.R
  */
 class AssistantLayerView(context: Context) : LinearLayout(context) {
 
+    private val historyList = LinearLayout(context).apply { orientation = VERTICAL }
+    private val historyScroll = ScrollView(context)
     private val historyPlaceholder = TextView(context)
     private val inputBox = TextView(context)
 
@@ -48,7 +52,12 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
                 context.resources.getDimensionPixelSize(R.dimen.spacing_2),
             )
         }
-        addView(historyPlaceholder, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+        historyList.addView(historyPlaceholder)
+        historyScroll.run {
+            isVerticalScrollBarEnabled = false
+            addView(historyList, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }
+        addView(historyScroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         inputBox.run {
             setText(R.string.assistant_input_placeholder)
@@ -134,6 +143,38 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     fun clearInput() {
         input.clear()
         renderInput()
+    }
+
+    fun currentInput(): String = input.toString()
+
+    /**
+     * Agrega una fila al historial de la IA (respuesta / resultado). La primera
+     * fila reemplaza el placeholder de "historial vacio".
+     */
+    fun addHistory(text: String) {
+        val context = context
+        if (historyList.indexOfChild(historyPlaceholder) >= 0) {
+            historyList.removeView(historyPlaceholder)
+        }
+        val row = TextView(context).apply {
+            this.text = text
+            setSingleLine(true)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_small_size),
+            )
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+            )
+        }
+        historyList.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        historyScroll.post { historyScroll.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun renderInput() {
