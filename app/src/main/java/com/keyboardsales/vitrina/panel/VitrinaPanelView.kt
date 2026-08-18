@@ -7,7 +7,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import com.keyboardsales.vitrina.bar.VitrinaChipView
 import com.keyboardsales.vitrina.data.CatalogGrouping
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.DocumentDummy
@@ -58,9 +57,12 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
      * este mismo archivo internamente. */
     val segmentSwitch = VitrinaSwitch(context)
 
+    private val close = TextView(context)
+    private val searchIcon = TextView(context)
+    private val switchRow = buildSwitchRow(context)
+
     private val searchField = TextView(context)
     private val searchClear = TextView(context)
-    private val documentsButton = TextView(context)
     private val searchRow = buildSearchRow(context)
     private val backRow = buildBackRow(context)
 
@@ -76,8 +78,7 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
         orientation = VERTICAL
         setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
         val touchHeight = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
-        addView(header(context))
-        addView(segmentSwitch, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        addView(switchRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(searchRow, LayoutParams(LayoutParams.MATCH_PARENT, touchHeight))
         addView(backRow, LayoutParams(LayoutParams.MATCH_PARENT, touchHeight))
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
@@ -146,10 +147,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
         applyVisibility()
     }
 
-    private fun toggleSearch() {
-        if (searchFocused) blurSearch() else focusSearch()
-    }
-
     private fun clearSearch() {
         if (query.isEmpty()) {
             blurSearch()
@@ -172,10 +169,9 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     private fun applyVisibility() {
         val inSearch = searchFocused
         val inDocuments = showingDocuments
-        val productSegment = currentSegment == Segment.PRODUCTO
 
         segmentSwitch.visibility = if (inSearch || inDocuments) GONE else VISIBLE
-        searchRow.visibility = if (productSegment && !inDocuments) VISIBLE else GONE
+        searchRow.visibility = if (inSearch) VISIBLE else GONE
         backRow.visibility = if (inDocuments) VISIBLE else GONE
         scroll.visibility = if (inSearch) GONE else VISIBLE
         searchClear.visibility = if (query.isNotEmpty()) VISIBLE else GONE
@@ -288,28 +284,53 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     // Cabecera y filas de Producto
     // ------------------------------------------------------------------
 
-    private fun header(context: Context): LinearLayout {
-        val title = TextView(context).apply {
-            setText(R.string.vitrina_title)
-            setSingleLine(true)
-            maxLines = 1
-            gravity = Gravity.CENTER_VERTICAL
+    /**
+     * Fila combinada: switch scrolleable (weight) + iconos fijos [🔍][✕] a la
+     * derecha, fuera del scroll. "Documentos" vive como elemento final dentro
+     * del scroll del switch (estilo de segmento, accion propia). "✕" es el
+     * affordance de "tocar fuera": si la lupa esta enfocada hace blurSearch()
+     * (devuelve el listado) en vez de cerrar el panel.
+     */
+    private fun buildSwitchRow(context: Context): LinearLayout {
+        close.apply {
+            text = "✕"
+            gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
+            contentDescription = context.getString(R.string.vitrina_close)
             setTextColor(ContextCompat.getColor(context, R.color.content_primary))
             setTextSize(
                 android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_body_regular_size),
+                context.resources.getDimension(R.dimen.type_body_large_size),
             )
-            // "tocar fuera" de la lupa: el titulo devuelve el listado.
-            setOnClickListener { if (searchFocused) blurSearch() }
+            setOnClickListener {
+                if (searchFocused) blurSearch() else onClose?.invoke()
+            }
         }
-        val close = VitrinaChipView(
-            context,
-            context.getString(R.string.vitrina_close),
-            context.getString(R.string.vitrina_close),
-            accent = false,
-        ).apply { setOnClickListener { onClose?.invoke() } }
+        searchIcon.apply {
+            text = "🔍"
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            contentDescription = context.getString(R.string.vitrina_search_hint)
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_body_large_size),
+            )
+            setOnClickListener { focusSearch() }
+        }
+        segmentSwitch.addTrailingAction(
+            label = context.getString(R.string.vitrina_documents),
+            contentDescription = context.getString(R.string.vitrina_documents),
+        ) {
+            if (currentSegment != Segment.PRODUCTO) {
+                currentSegment = Segment.PRODUCTO
+                segmentSwitch.selectSegment(0)
+            }
+            openDocuments()
+        }
+
+        val iconSize = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
         return LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -319,8 +340,9 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
                 0,
             )
-            addView(title, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(close)
+            addView(segmentSwitch, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            addView(searchIcon, LayoutParams(iconSize, iconSize))
+            addView(close, LayoutParams(iconSize, iconSize))
             setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
         }
     }
@@ -331,8 +353,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
             setSingleLine(true)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            isClickable = true
-            isFocusable = true
             contentDescription = context.getString(R.string.vitrina_search_hint)
             setTextSize(
                 android.util.TypedValue.COMPLEX_UNIT_PX,
@@ -345,7 +365,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 0,
             )
             background = fieldBackground(context)
-            setOnClickListener { toggleSearch() }
         }
         searchClear.apply {
             text = "✕"
@@ -359,28 +378,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 context.resources.getDimension(R.dimen.type_body_small_size),
             )
             setOnClickListener { clearSearch() }
-        }
-        documentsButton.apply {
-            text = context.getString(R.string.vitrina_documents)
-            gravity = Gravity.CENTER
-            setSingleLine(true)
-            maxLines = 1
-            isClickable = true
-            isFocusable = true
-            contentDescription = context.getString(R.string.vitrina_documents)
-            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
-            setTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_supporting_label_size),
-            )
-            setPadding(
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
-            )
-            background = chipBackground(context)
-            setOnClickListener { openDocuments() }
         }
         return LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -397,7 +394,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 context.resources.getDimensionPixelSize(R.dimen.size_touch_min),
                 LayoutParams.MATCH_PARENT,
             ).apply { marginStart = gap })
-            addView(documentsButton, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT).apply { marginStart = gap })
         }
     }
 
@@ -612,18 +608,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     private fun fieldBackground(context: Context): GradientDrawable {
         val resources = context.resources
         val radius = resources.getDimension(R.dimen.radius_sm)
-        val stroke = resources.getDimension(R.dimen.border_width_hairline).toInt()
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(ContextCompat.getColor(context, R.color.surface_raised))
-            setStroke(stroke, ContextCompat.getColor(context, R.color.border_subtle))
-        }
-    }
-
-    private fun chipBackground(context: Context): GradientDrawable {
-        val resources = context.resources
-        val radius = resources.getDimension(R.dimen.radius_pill)
         val stroke = resources.getDimension(R.dimen.border_width_hairline).toInt()
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
