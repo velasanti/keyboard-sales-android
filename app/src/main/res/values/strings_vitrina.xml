@@ -24,4 +24,13 @@
         <item>Booking</item>
         <item>Respuestas rápidas</item>
     </array>
+    <string name="vitrina_search_hint">Buscar productos</string>
+    <string name="vitrina_search_clear_cd">Borrar búsqueda</string>
+    <string name="vitrina_documents">Documentos</string>
+    <string name="vitrina_documents_back">Volver a Producto</string>
+    <string name="vitrina_document_cd">Documento: %1$s</string>
+    <string name="vitrina_document_updated_today">Actualizado hoy</string>
+    <string name="vitrina_document_updated_yesterday">Actualizado ayer</string>
+    <string name="vitrina_document_updated_days">Actualizado hace %1$d días</string>
+    <string name="vitrina_no_results">Sin resultados</string>
 </resources>

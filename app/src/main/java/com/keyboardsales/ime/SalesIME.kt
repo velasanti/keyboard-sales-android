@@ -64,14 +64,19 @@ class SalesIME : LatinIME() {
     }
 
     /**
-     * Captura de la capa ✨ (Paso 2): cuando el asistente esta activo, el QWERTY
-     * escribe al cuadro propio de ✨ y NUNCA al campo de la app anfitriona.
-     * Punto de enganche aditivo: el motor no se toca, solo no se le alimenta input
-     * mientras la capa ✨ compone (familia 04.10 §9.6.2).
+     * Captura del QWERTY hacia ✨ o hacia la lupa de Vitrina modo, exclusiva
+     * entre si (mismo mecanismo en los dos casos): mientras cualquiera de las
+     * dos este activa, las teclas escriben a su cuadro propio y NUNCA al campo
+     * de la app anfitriona. El motor no se toca, solo no se le alimenta input
+     * mientras una de las dos compone (04.10 §9.6.2). ✨ tiene prioridad porque
+     * las dos superficies ya se cierran mutuamente al abrirse (VitrinaHost.closePanel()
+     * / AssistantHost), asi que en la practica solo una puede estar activa a la vez.
      */
     override fun onEvent(event: Event) {
         if (assistantHost.isCaptureActive) {
             assistantHost.onAssistantEvent(event)
+        } else if (vitrinaHost.isSearchCaptureActive) {
+            vitrinaHost.onSearchEvent(event)
         } else {
             super.onEvent(event)
         }
