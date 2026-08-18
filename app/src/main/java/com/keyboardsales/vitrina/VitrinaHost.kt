@@ -15,6 +15,7 @@ import com.keyboardsales.vitrina.bar.DummyCatalogBadgeView
 import com.keyboardsales.vitrina.bar.VitrinaBarView
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.CatalogRepository
+import com.keyboardsales.vitrina.data.DocumentItem
 import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 import com.keyboardsales.vitrina.insert.InsertController
@@ -24,6 +25,8 @@ import com.keyboardsales.vitrina.panel.VitrinaPanelView
 import com.keyboardsales.vitrina.search.CatalogMatcher
 import com.keyboardsales.vitrina.search.TriggerDetector
 import com.keyboardsales.vitrina.search.VitrinaTrigger
+import helium314.keyboard.event.Event
+import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.Log
 import java.util.concurrent.ExecutorService
@@ -55,6 +58,8 @@ class VitrinaHost(private val ime: SalesIME) {
     private var anchorView: VitrinaAnchorView? = null
     private var panelView: VitrinaPanelView? = null
     private var panelVisible = false
+    private var panelHeightPx = 0
+    private var searchActive = false
     private var barActive = false
     private var pendingMessage: String? = null
     private var pendingDeleteLength = 0
@@ -86,43 +91,53 @@ class VitrinaHost(private val ime: SalesIME) {
             )
         }
         injectPanel(view)
+        injectAnchor()
         renderBadge()
     }
 
     /**
-     * Vitrina modo: el ancla y el panel como hijos de keyboard_view_wrapper,
-     * con el patron de emoji_palettes_view (hermanos del QWERTY que se
-     * alternan por visibilidad).
+     * Vitrina modo: el panel como hijo de keyboard_view_wrapper, con el patron
+     * de emoji_palettes_view (hermano del QWERTY que se alterna por visibilidad).
+     * El ancla ☰ NO vive aca: va en strip_container (ver [injectAnchor]) para no
+     * tapar la fila Q-W-E-R-T-Y.
      */
     private fun injectPanel(view: View) {
         val wrapper = keyboardViewWrapper ?: return
         val panel = VitrinaPanelView(view.context)
         panel.visibility = View.GONE
+        panelHeightPx = view.resources.getDimensionPixelSize(R.dimen.kb_panel_height)
         panel.layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
-            view.resources.getDimensionPixelSize(R.dimen.kb_panel_height),
+            panelHeightPx,
             Gravity.TOP,
         )
         wirePanelCallbacks(panel)
         panelView = panel
         wrapper.addView(panel)
+    }
 
-        val anchor = VitrinaAnchorView(view.context)
-        anchor.contentDescription = view.context.getString(R.string.vitrina_anchor_open)
-        // Ancla en fila superior, lado izquierdo, junto a ✨ (04.4 §3, 04.10 §2)
-        // Se superpone al QWERTY cuando Vitrina modo está activo.
-        // Visible solo cuando el modo está activo (visibility GONE cuando no).
+    /**
+     * Ancla ☰ en la barra superior (strip_container), arriba del QWERTY
+     * (04.4 §3, 04.10 §2). Nivel B: visual de 40dp (alto de la strip) con area
+     * tactil expandida a 48dp via TouchDelegate; cero cambio al presupuesto
+     * vertical. No vive en keyboard_view_wrapper para no tapar las teclas.
+     */
+    private fun injectAnchor() {
+        val container = stripContainer ?: return
+        val context = container.context
+        val anchor = VitrinaAnchorView(context)
+        anchor.contentDescription = context.getString(R.string.vitrina_anchor_open)
         val lp = FrameLayout.LayoutParams(
-            view.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
-            view.context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+            context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
+            context.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height),
             Gravity.TOP or Gravity.START,
         ).apply {
-            marginStart = view.context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
-            topMargin = view.context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
+            marginStart = context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
         }
         anchor.setOnClickListener { togglePanel() }
         anchorView = anchor
-        wrapper.addView(anchor, lp)
+        container.addView(anchor, lp)
+        container.expandTouchTarget(anchor, context.resources.getDimensionPixelSize(R.dimen.size_touch_min))
     }
 
     fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -262,7 +277,17 @@ class VitrinaHost(private val ime: SalesIME) {
             barView?.showConfirm(message)
             showBar()
         }
+        panel.onDocumentClick = document@{ document ->
+            val message = MessageBuilder.documentMessage(document)
+            if (message.isEmpty()) return@document
+            pendingMessage = message
+            pendingDeleteLength = 0
+            barView?.showConfirm(message)
+            showBar()
+        }
         panel.onClose = { hidePanel() }
+        panel.onSearchFocus = { enterSearchMode() }
+        panel.onSearchBlur = { exitSearchMode() }
 
         // El cambio de segmento (Producto/Booking/Respuestas rapidas) lo maneja
         // VitrinaPanelView internamente sobre su propio segmentSwitch -- no se
@@ -273,6 +298,7 @@ class VitrinaHost(private val ime: SalesIME) {
         val panel = panelView ?: return
         val keyboard = keyboardView ?: return
         val repository = this.repository ?: return
+        exitSearchMode()
         hideBar()
         panel.visibility = View.VISIBLE
         keyboard.visibility = View.GONE
@@ -289,10 +315,85 @@ class VitrinaHost(private val ime: SalesIME) {
     private fun hidePanel() {
         if (!panelVisible) return
         panelVisible = false
+        exitSearchMode()
         panelView?.visibility = View.GONE
         keyboardView?.visibility = View.VISIBLE
         anchorView?.contentDescription = ime.getString(R.string.vitrina_anchor_open)
         hideBar()
+    }
+
+    // ------------------------------------------------------------------
+    // Lupa (buscador): QWERTY temporal bajo el panel mientras se escribe
+    // ------------------------------------------------------------------
+
+    /** Si el QWERTY captura hacia la lupa en vez de al campo anfitrion. */
+    val isSearchCaptureActive: Boolean get() = searchActive
+
+    /**
+     * Entra a modo busqueda: el panel se achica a cabecera + campo de busqueda
+     * (VitrinaPanelView oculta switch y listado) y el QWERTY reaparece debajo.
+     * Las teclas se capturan en [onSearchEvent], nunca al chat anfitrion.
+     */
+    private fun enterSearchMode() {
+        if (searchActive) return
+        searchActive = true
+        val panel = panelView ?: return
+        val keyboard = keyboardView ?: return
+        panel.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP,
+        )
+        keyboard.visibility = View.VISIBLE
+        panel.requestLayout()
+        panel.post {
+            // El post corre asincrono: si el usuario desenfoco la lupa (o cerro
+            // el panel) antes de que llegue, exitSearchMode ya reseteo
+            // searchActive y topMargin; no pisar el reset con un valor viejo.
+            if (!searchActive) return@post
+            val lp = keyboard.layoutParams as? FrameLayout.LayoutParams ?: return@post
+            lp.topMargin = panel.height
+            keyboard.layoutParams = lp
+            keyboard.requestLayout()
+        }
+    }
+
+    private fun exitSearchMode() {
+        if (!searchActive) return
+        searchActive = false
+        val panel = panelView ?: return
+        val keyboard = keyboardView ?: return
+        panel.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            panelHeightPx,
+            Gravity.TOP,
+        )
+        val lp = keyboard.layoutParams as? FrameLayout.LayoutParams
+        if (lp != null) {
+            lp.topMargin = 0
+            keyboard.layoutParams = lp
+        }
+        keyboard.visibility = View.GONE
+        panel.requestLayout()
+    }
+
+    /**
+     * Llamado desde [SalesIME.onEvent] solo cuando [isSearchCaptureActive].
+     * Mismo mecanismo que la capa ✨: DELETE -> backspace, code point -> char.
+     */
+    fun onSearchEvent(event: Event): Boolean {
+        val panel = panelView ?: return false
+        return when {
+            event.keyCode == KeyCode.DELETE -> {
+                panel.inputBackspace()
+                true
+            }
+            event.codePoint >= 0 && event.codePoint != Event.NOT_A_CODE_POINT -> {
+                panel.inputCharacter(event.codePoint)
+                true
+            }
+            else -> false
+        }
     }
 
     /** El chip de la barra y el ancla comparten la entrada al modo (04.10). */

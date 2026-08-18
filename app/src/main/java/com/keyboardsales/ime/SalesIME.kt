@@ -7,6 +7,7 @@ import android.view.inputmethod.EditorInfo
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
+import helium314.keyboard.event.Event
 import helium314.keyboard.latin.LatinIME
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -54,6 +55,20 @@ class SalesIME : LatinIME() {
     override fun setInputView(view: View) {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
+    }
+
+    /**
+     * Captura del QWERTY hacia la lupa de Vitrina modo (mismo mecanismo que la
+     * capa ✨): cuando la lupa esta enfocada, las teclas escriben al campo de
+     * busqueda y NUNCA al campo de la app anfitriona. El motor no se toca; solo
+     * no se le alimenta input mientras la lupa compone.
+     */
+    override fun onEvent(event: Event) {
+        if (vitrinaHost.isSearchCaptureActive) {
+            vitrinaHost.onSearchEvent(event)
+        } else {
+            super.onEvent(event)
+        }
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {

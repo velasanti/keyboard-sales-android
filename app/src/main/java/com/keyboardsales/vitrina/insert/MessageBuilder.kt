@@ -1,6 +1,7 @@
 package com.keyboardsales.vitrina.insert
 
 import com.keyboardsales.vitrina.data.CatalogItem
+import com.keyboardsales.vitrina.data.DocumentItem
 import com.keyboardsales.vitrina.data.MessageVariant
 import com.keyboardsales.vitrina.data.QuickReply
 
@@ -12,6 +13,8 @@ import com.keyboardsales.vitrina.data.QuickReply
  *    tarjeta; la app receptora renderiza desde los Open Graph tags.
  *  - Variante de producto: el texto de la variante tal cual + la URL del
  *    producto en su propia linea (ADR-017). El texto ya viene resuelto.
+ *  - Documento: el nombre + la URL en su propia linea (mismo patron que
+ *    producto pero sin precio). El archivo real todavia no se manda.
  *  - Respuesta rapida: el texto tal cual, sin URL.
  */
 object MessageBuilder {
@@ -28,6 +31,12 @@ object MessageBuilder {
         append(variant.texto)
         append('\n')
         append(item.url)
+    }
+
+    fun documentMessage(document: DocumentItem): String = buildString {
+        append(document.nombre)
+        append('\n')
+        append(document.url)
     }
 
     fun quickReplyMessage(reply: QuickReply): String = reply.texto
