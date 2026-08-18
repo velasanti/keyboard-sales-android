@@ -5,7 +5,14 @@
     <string name="assistant_title">Asistente de ventas</string>
     <string name="assistant_close">Cerrar</string>
     <string name="assistant_history_placeholder">El historial de la IA aparece acá</string>
-    <string name="assistant_input_placeholder">Escribí tu consulta a la IA</string>
+    <string name="assistant_input_placeholder">Escribe tu consulta a la IA</string>
+    <string name="assistant_example_1">Cotízame 3 unidades del modelo X</string>
+    <string name="assistant_example_2">¿Cuál es la garantía de este producto?</string>
+    <string name="assistant_example_3">Compara el modelo X con el modelo Y</string>
+    <string name="assistant_example_4">Calcula la cuota de esta compra</string>
+    <string name="assistant_example_5">Genera una cotización</string>
+    <string name="assistant_example_6">Agenda una reunión</string>
+    <string name="assistant_example_7">Derívame a un compañero</string>
     <string name="assistant_consult_cuotas">Financiamiento (dummy): hasta 12 cuotas. Sobre una base de $1.850.000, 12 cuotas quedan en $154.167.</string>
     <string name="assistant_consult_fallback">Consulta de conocimiento (dummy): por ahora sé responder sobre cuotas y financiamiento.</string>
     <string name="assistant_action_pdf">Cotización en PDF</string>

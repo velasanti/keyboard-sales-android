@@ -2,6 +2,8 @@ package com.keyboardsales.assistant
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -29,6 +31,27 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     private val undoCard = LinearLayout(context)
 
     private val input = StringBuilder()
+
+    private val exampleMessageRes = intArrayOf(
+        R.string.assistant_example_1,
+        R.string.assistant_example_2,
+        R.string.assistant_example_3,
+        R.string.assistant_example_4,
+        R.string.assistant_example_5,
+        R.string.assistant_example_6,
+        R.string.assistant_example_7,
+    )
+    private var exampleIndex = 0
+    private val rotationHandler = Handler(Looper.getMainLooper())
+    private val rotationRunnable = object : Runnable {
+        override fun run() {
+            if (input.isEmpty()) {
+                exampleIndex = (exampleIndex + 1) % exampleMessageRes.size
+                renderInput()
+            }
+            rotationHandler.postDelayed(this, EXAMPLE_ROTATION_MS)
+        }
+    }
 
     var onClose: (() -> Unit)? = null
     var onSend: (() -> Unit)? = null
@@ -155,6 +178,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
         }
         addView(undoCard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         showInput()
+        rotationHandler.postDelayed(rotationRunnable, EXAMPLE_ROTATION_MS)
     }
 
     private fun header(context: Context): LinearLayout {
@@ -278,7 +302,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     private fun renderInput() {
         val context = context
         if (input.isEmpty()) {
-            inputBox.setText(R.string.assistant_input_placeholder)
+            inputBox.setText(exampleMessageRes[exampleIndex])
             inputBox.setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
         } else {
             inputBox.text = input.toString()
@@ -296,5 +320,9 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
             setColor(ContextCompat.getColor(context, R.color.surface_raised))
             setStroke(stroke, ContextCompat.getColor(context, R.color.border_subtle))
         }
+    }
+
+    private companion object {
+        const val EXAMPLE_ROTATION_MS = 3_500L
     }
 }

@@ -48,6 +48,7 @@ class AssistantHost(
     private var stripContainer: FrameLayout? = null
     private var suggestionStripView: View? = null
     private var keyboardViewWrapper: android.view.ViewGroup? = null
+    private var anchorBarEndPx = 0
 
     private var layerView: AssistantLayerView? = null
     private var layerActive = false
@@ -120,7 +121,11 @@ class AssistantHost(
                 context.resources.getDimension(R.dimen.type_body_large_size),
             )
             contentDescription = context.getString(R.string.vitrina_anchor_open)
-            setOnClickListener { vitrinaHost.togglePanel() }
+            setOnClickListener {
+                // Exclusion mutua: si ✨ esta activo, se cierra antes de abrir Vitrina.
+                if (layerActive) hideLayer()
+                vitrinaHost.togglePanel()
+            }
             background = anchorBackground(context)
         }
 
@@ -167,6 +172,12 @@ class AssistantHost(
             marginStart = pad
         }
         container.addView(bar, lp)
+
+        // Dar espacio propio a las anclas: la barra de sugerencias (y su botón
+        // "Más teclas") empieza después de [☰][✦], en vez de quedar debajo.
+        val gap = context.resources.getDimensionPixelSize(R.dimen.kb_bar_gap)
+        anchorBarEndPx = pad + anchorWidth * 2 + gap
+        applySuggestionStripMargin()
 
         // Área táctil 48dp (regla 8): expande el hit rect de cada ancla. El
         // vertical queda acotado al alto de la strip (40dp); el horizontal llega a 48dp.
@@ -222,6 +233,14 @@ class AssistantHost(
             setColor(ContextCompat.getColor(context, R.color.surface_raised))
             setStroke(stroke, ContextCompat.getColor(context, R.color.border_subtle))
         }
+    }
+
+    /** Aplica el margen izquierdo a la barra de sugerencias para no tapar [☰][✦]. */
+    private fun applySuggestionStripMargin() {
+        if (anchorBarEndPx <= 0) return
+        val lp = suggestionStripView?.layoutParams as? FrameLayout.LayoutParams ?: return
+        lp.marginStart = anchorBarEndPx
+        suggestionStripView?.layoutParams = lp
     }
 
     // ------------------------------------------------------------------
@@ -400,6 +419,8 @@ class AssistantHost(
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return
         val layer = layerView ?: return
+        // Exclusion mutua: si Vitrina modo esta abierto, se cierra antes de abrir ✨.
+        vitrinaHost.closePanel()
         layerActive = true
 
         // Cierra la composicion pendiente del chat (la "media palabra" con subrayado
@@ -441,6 +462,7 @@ class AssistantHost(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT,
         )
+        applySuggestionStripMargin()
         suggestion.visibility = View.VISIBLE
         layer.visibility = View.GONE
     }

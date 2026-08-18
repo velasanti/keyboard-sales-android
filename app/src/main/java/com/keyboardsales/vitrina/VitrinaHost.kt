@@ -11,7 +11,6 @@ import android.widget.LinearLayout
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.bar.BarLayout
 import com.keyboardsales.vitrina.bar.BarMode
-import com.keyboardsales.vitrina.bar.DummyCatalogBadgeView
 import com.keyboardsales.vitrina.bar.VitrinaBarView
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.CatalogRepository
@@ -44,9 +43,6 @@ class VitrinaHost(private val ime: SalesIME) {
 
     private var stripContainer: FrameLayout? = null
     private var keyboardViewWrapper: android.view.ViewGroup? = null
-
-    private var catalogIsDummy = false
-    private var badgeAdded = false
 
     private var repository: CatalogRepository? = null
     private var barView: VitrinaBarView? = null
@@ -86,7 +82,6 @@ class VitrinaHost(private val ime: SalesIME) {
             )
         }
         injectPanel(view)
-        renderBadge()
     }
 
     /**
@@ -124,9 +119,7 @@ class VitrinaHost(private val ime: SalesIME) {
     }
 
     fun onCatalogLoaded(esDummy: Boolean) {
-        catalogIsDummy = esDummy
         Log.d(TAG, "onCatalogLoaded(esDummy=$esDummy)")
-        renderBadge()
     }
 
     fun onUpdateSelection(
@@ -282,6 +275,11 @@ class VitrinaHost(private val ime: SalesIME) {
         }
     }
 
+    /** Cierra Vitrina modo si esta abierto (exclusion mutua con la capa ✨). */
+    fun closePanel() {
+        hidePanel()
+    }
+
     private fun performInsert() {
         val message = pendingMessage ?: return
         val insertResult = InsertController.insert(ime, pendingDeleteLength, message)
@@ -394,30 +392,6 @@ class VitrinaHost(private val ime: SalesIME) {
         container.getWindowVisibleDisplayFrame(windowRect)
         val threshold = container.resources.getDimensionPixelSize(R.dimen.kb_bar_expanded_min_height)
         return BarMode.decide(usableHeightPx = windowRect.height(), expandedThresholdPx = threshold)
-    }
-
-    /** Aviso "Catálogo de prueba" mientras el catalogo sea el dummy. */
-    private fun renderBadge() {
-        val container = stripContainer ?: return
-        if (badgeAdded || !catalogIsDummy) return
-        val context = container.context
-        val badge = DummyCatalogBadgeView(context).apply {
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { togglePanel() }
-        }
-        val lp = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
-        )
-        val paddingX = context.resources.getDimensionPixelSize(R.dimen.spacing_2)
-        val paddingY = context.resources.getDimensionPixelSize(R.dimen.spacing_1)
-        lp.marginEnd = paddingX
-        lp.topMargin = paddingY
-        container.addView(badge, lp)
-        container.expandTouchTarget(badge, container.resources.getDimensionPixelSize(R.dimen.size_touch_min))
-        badgeAdded = true
     }
 
     companion object {
