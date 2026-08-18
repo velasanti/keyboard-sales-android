@@ -6,16 +6,21 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import helium314.keyboard.latin.R
 
 /**
- * Selector de 3 segmentos para Vitrina modo: "Producto" | "Booking" | "Respuestas rapidas".
+ * Selector de segmentos para Vitrina modo: "Producto" | "Booking" |
+ * "Respuestas rapidas".
  *
  * - Segmento por defecto al abrir Vitrina modo: "Producto".
- * - Al tocar un segmento, emite un callback que VitrinaHost captura para reemplazar
- *   el contenido de abajo sin cerrar el panel.
+ * - Al tocar un segmento, emite un callback que VitrinaHost captura para
+ *   reemplazar el contenido de abajo sin cerrar el panel.
+ * - Los segmentos miden su ancho natural (wrap_content) y viven en un
+ *   HorizontalScrollView: nunca se truncan, se deslizan si no entran en
+ *   pantalla (tambien si a futuro se agregan mas segmentos).
  * - "Booking" y "Respuestas rapidas" muestran placeholder por ahora.
  */
 class VitrinaSwitch(
@@ -52,8 +57,6 @@ class VitrinaSwitch(
         )
     )
 
-    private val segmentWeight = 1.0f / segments.size
-
     private val selectedBgRes get() = R.color.vitrina_switch_selected_bg
     private val selectedColor get() = ContextCompat.getColor(context, R.color.vitrina_switch_selected_fg)
     private val unselectedBgRes get() = R.color.vitrina_switch_unselected_bg
@@ -70,14 +73,27 @@ class VitrinaSwitch(
         )
     }
 
+    private val scroll = HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        isVerticalScrollBarEnabled = false
+        addView(
+            container,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+    }
+
     init {
-        addView(container, FrameLayout.LayoutParams(
+        addView(scroll, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
             Gravity.CENTER_VERTICAL,
         ))
 
-        // Crear 3 segmentos con ancho equitativo usando weight
+        // Crear los segmentos con ancho natural: el HorizontalScrollView los
+        // deja deslizar si no entran completos en pantalla.
         for (i in 0 until segments.size) {
             val segment = segments[i]
             val btn = createSegmentButton(segment, i)
@@ -92,29 +108,7 @@ class VitrinaSwitch(
         segment: Segment,
         index: Int,
     ): Button {
-        val btn = Button(context).apply {
-            text = segment.label
-            contentDescription = segment.contentDescription
-            isSingleLine = true
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(unselectedColor)
-            setBackgroundResource(unselectedBgRes)
-            setTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_supporting_label_size),
-            )
-            gravity = Gravity.CENTER
-            // layout: peso equitativo + minima area tactil de 48dp
-            layoutParams = LinearLayout.LayoutParams(
-                0,  // width = 0 significa wrap_content con weight
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                weight = segmentWeight
-                minWidth = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
-            }
-        }
-
+        val btn = createButton(segment.label, segment.contentDescription)
         btn.setOnClickListener {
             selectSegment(index)
             when (index) {
@@ -123,11 +117,51 @@ class VitrinaSwitch(
                 2 -> onQuickRepliesSelected?.invoke()
             }
         }
-
         return btn
     }
 
-    private fun selectSegment(index: Int) {
+    private fun createButton(label: String, contentDescription: String): Button =
+        Button(context).apply {
+            text = label
+            this.contentDescription = contentDescription
+            isSingleLine = true
+            maxLines = 1
+            setTextColor(unselectedColor)
+            setBackgroundResource(unselectedBgRes)
+            setTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_PX,
+                context.resources.getDimension(R.dimen.type_supporting_label_size),
+            )
+            gravity = Gravity.CENTER
+            // Ancho natural (wrap_content + padding): el label nunca se trunca.
+            // Si no entran todos, el HorizontalScrollView los deja deslizar.
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.spacing_2),
+                0,
+                context.resources.getDimensionPixelSize(R.dimen.spacing_2),
+                0,
+            )
+            // Button trae minWidth=88dp por defecto; lo bajamos a 48dp para que
+            // el tab mida su ancho natural (wrap_content) sin ese piso.
+            val touchMin = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
+            minWidth = touchMin
+            minimumWidth = touchMin
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
+
+    /** Agrega un elemento al final del scroll, con el mismo estilo que los
+     * segmentos pero con su propia accion (p. ej. "Documentos"). No participa
+     * en la seleccion de segmento. */
+    fun addTrailingAction(label: String, contentDescription: String, onClick: () -> Unit) {
+        val btn = createButton(label, contentDescription)
+        btn.setOnClickListener { onClick() }
+        container.addView(btn)
+    }
+
+    fun selectSegment(index: Int) {
         if (index == currentSegment) return
 
         currentSegment = index
