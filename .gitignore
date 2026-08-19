@@ -35,6 +35,10 @@ build/
 !gradle/wrapper/gradle-wrapper.properties
 local.properties
 .kotlin/
+
+# --- Evidencia en disco (capturas y grabaciones de verificacion manual) ---
+art/
+!art/launcher_icon/
 gradle-app.setting
 .gradletasknamecache
 **/.gradle/
