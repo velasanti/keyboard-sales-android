@@ -9,6 +9,27 @@ plugins {
     id("app.cash.sqldelight") version "2.2.1"
 }
 
+// keyboard-sales: identidad de build (hash corto + rama) resuelta en tiempo de
+// configuracion con git rev-parse via providers.exec (compatible con el
+// configuration cache). Se expone como BuildConfig para el log de arranque y
+// para el texto visible en debug, de modo que una captura o el logcat demuestren
+// por si solos que build era. Si git no esta disponible, cae a "unknown".
+// OJO: providers.exec se resuelve en configuracion y el configuration cache
+// guarda el valor; un clean build o un cambio en este script lo refresca.
+val buildCommit: String = runCatching {
+    providers.exec {
+        commandLine("git", "rev-parse", "--short", "HEAD")
+        workingDir = rootProject.projectDir
+    }.standardOutput.asText.get().trim()
+}.getOrDefault("unknown")
+
+val buildBranch: String = runCatching {
+    providers.exec {
+        commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
+        workingDir = rootProject.projectDir
+    }.standardOutput.asText.get().trim()
+}.getOrDefault("unknown")
+
 android {
     compileSdk = 36
 
@@ -18,6 +39,8 @@ android {
         targetSdk = 36
         versionCode = 4006
         versionName = "4.0-dev1"
+        buildConfigField("String", "BUILD_COMMIT", "\"$buildCommit\"")
+        buildConfigField("String", "BUILD_BRANCH", "\"$buildBranch\"")
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))

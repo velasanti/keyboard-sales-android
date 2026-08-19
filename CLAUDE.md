@@ -363,5 +363,7 @@ No declares una tarea terminada, ni digas "listo"/"completado"/"commiteado" hast
    - `git log --oneline -3` — el commit que decís que existe, existe.
    - `git log origin/<rama>..HEAD --oneline` — si hay commits sin pushear, decilo explícitamente y pusheá antes de reportar terminado.
 4. Si el paso implica un fix de UI/interacción: no alcanza con "debería funcionar ahora" — hay que describir qué comportamiento específico verificaste (o pedir que el humano lo confirme en dispositivo antes de cerrar el ticket).
+5. **Supuestos explícitos**: lo que no verificaste de verdad (lo asumiste, lo inferiste, "debería andar") no se presenta como hecho. Márcalo **SUPUESTO — NO VERIFICADO AÚN**. La confusión del badge "D" (2026-08-18) enseñó que "debería verse" no es verificación: distinguir lo medido de lo supuesto es parte del reporte.
+6. **Identidad de build en capturas**: toda captura/grabación que sirva de evidencia tiene que dejar claro qué build la produjo (hash corto en la esquina superior derecha del teclado en debug, o `Log.i("BuildInfo", "commit=… rama=…")` en logcat) y si es en vivo (recién tomada) o vieja. Una captura sin identidad de build no es evidencia.
 
 Si cualquiera de estos falla, no digas "Done" — seguí iterando o reportá explícitamente el bloqueo. "Terminé" sin este chequeo no es una respuesta válida.
