@@ -42,6 +42,7 @@ import java.util.concurrent.Executors
 class VitrinaHost(private val ime: SalesIME) {
 
     private var stripContainer: FrameLayout? = null
+    private var stripContent: FrameLayout? = null
     private var keyboardViewWrapper: android.view.ViewGroup? = null
 
     private var repository: CatalogRepository? = null
@@ -65,15 +66,16 @@ class VitrinaHost(private val ime: SalesIME) {
 
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
+        stripContent = view.findViewById<FrameLayout>(R.id.strip_content)
         keyboardViewWrapper = view.findViewById<android.view.ViewGroup>(R.id.keyboard_view_wrapper)
         keyboardView = view.findViewById(R.id.keyboard_view)
         Log.d(TAG, "onInputView: strip=${stripContainer != null}, wrapper=${keyboardViewWrapper != null}")
-        if (stripContainer != null) {
-            suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
+        if (stripContent != null) {
+            suggestionStripView = stripContent?.findViewById(R.id.suggestion_strip_view)
             val bar = VitrinaBarView(view.context)
             wireBarCallbacks(bar)
             barView = bar
-            stripContainer?.addView(
+            stripContent?.addView(
                 bar,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,

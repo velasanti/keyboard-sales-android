@@ -46,9 +46,10 @@ class AssistantHost(
 ) {
 
     private var stripContainer: FrameLayout? = null
+    private var stripContent: FrameLayout? = null
+    private var anchorSlot: FrameLayout? = null
     private var suggestionStripView: View? = null
     private var keyboardViewWrapper: android.view.ViewGroup? = null
-    private var anchorBarEndPx = 0
 
     private var layerView: AssistantLayerView? = null
     private var layerActive = false
@@ -67,7 +68,9 @@ class AssistantHost(
 
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
-        suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
+        stripContent = view.findViewById<FrameLayout>(R.id.strip_content)
+        anchorSlot = view.findViewById<FrameLayout>(R.id.anchor_slot)
+        suggestionStripView = stripContent?.findViewById(R.id.suggestion_strip_view)
         keyboardViewWrapper = view.findViewById<android.view.ViewGroup>(R.id.keyboard_view_wrapper)
         Log.d(TAG, "onInputView: strip=${stripContainer != null}, wrapper=${keyboardViewWrapper != null}")
         injectLayer()
@@ -75,7 +78,7 @@ class AssistantHost(
     }
 
     private fun injectLayer() {
-        val container = stripContainer ?: return
+        val container = stripContent ?: return
         val layer = AssistantLayerView(container.context).apply {
             visibility = View.GONE
             onClose = { hideLayer() }
@@ -99,11 +102,16 @@ class AssistantHost(
      * ✨ a su derecha) en la barra superior (strip_container), NO flotando sobre
      * el QWERTY. Nivel B (decisión Santi 2026-08-17): anclas de 40dp de alto
      * (alto de la strip) con área táctil expandida a 48dp; cero cambio al
-     * presupuesto vertical en ningún estado. La coexistencia con
-     * sugerencias/chips/capa ✨ es el Paso 7, no se resuelve acá.
+     * presupuesto vertical en ningún estado.
+     *
+     * Las anclas viven en anchor_slot, su propio espacio dedicado dentro de
+     * strip_container (hermano de strip_content). Nada de lo que vive en
+     * strip_content (sugerencias, chips, capa ✨) puede quedar detrás ni debajo
+     * de las anclas: es un problema de layout resuelto estructuralmente, no con
+     * margen ni opacidad.
      */
     private fun injectAnchorBar() {
-        val container = stripContainer ?: return
+        val container = anchorSlot ?: return
         val context = container.context
         val anchorHeight = context.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height)
         val anchorWidth = context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size)
@@ -173,26 +181,20 @@ class AssistantHost(
         }
         container.addView(bar, lp)
 
-        // Dar espacio propio a las anclas: la barra de sugerencias (y su botón
-        // "Más teclas") empieza después de [☰][✦], en vez de quedar debajo.
-        val gap = context.resources.getDimensionPixelSize(R.dimen.kb_bar_gap)
-        anchorBarEndPx = pad + anchorWidth * 2 + gap
-        applySuggestionStripMargin()
-
         // Área táctil 48dp (regla 8): expande el hit rect de cada ancla. El
         // vertical queda acotado al alto de la strip (40dp); el horizontal llega a 48dp.
         val touchMin = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
         container.expandTouchTarget(catalogAnchor, touchMin)
         container.expandTouchTarget(assistantAnchor, touchMin)
 
-        Log.d(TAG, "injectAnchorBar: anclas en strip_container=${container.childCount} (☰ y ✨)")
+        Log.d(TAG, "injectAnchorBar: anclas en anchor_slot=${container.childCount} (☰ y ✨)")
         bar.post {
             val catalog = bar.getChildAt(0)
             val assistant = bar.getChildAt(1)
-            val kv = container.findViewById<View>(R.id.suggestion_strip_view)
+            val kv = stripContent?.findViewById<View>(R.id.suggestion_strip_view)
             Log.d(
                 TAG,
-                "layoutQ: strip_container bounds=[${container.left},${container.top}]-" +
+                "layoutQ: anchor_slot bounds=[${container.left},${container.top}]-" +
                     "[${container.right},${container.bottom}] h=${container.height}",
             )
             Log.d(
@@ -235,14 +237,6 @@ class AssistantHost(
         }
     }
 
-    /** Aplica el margen izquierdo a la barra de sugerencias para no tapar [☰][✦]. */
-    private fun applySuggestionStripMargin() {
-        if (anchorBarEndPx <= 0) return
-        val lp = suggestionStripView?.layoutParams as? FrameLayout.LayoutParams ?: return
-        lp.marginStart = anchorBarEndPx
-        suggestionStripView?.layoutParams = lp
-    }
-
     // ------------------------------------------------------------------
     // Alternancia de la capa sobre la franja superior
     // ------------------------------------------------------------------
@@ -264,6 +258,7 @@ class AssistantHost(
         val seq = ++sendSequence
         searchExecutor.execute {
             val intent = DummyIntentDetector.detect(text)
+            Log.d(TAG, "handleSend text='$text' intent=${intent.type}")
             val line = when (intent.type) {
                 // Paso 4: la redaccion no solo se clasifica, arma el mensaje y
                 // exige confirmacion ADR-016 antes de insertar al chat.
@@ -332,6 +327,7 @@ class AssistantHost(
             pendingActionType != null -> {
                 val type = pendingActionType!!
                 pendingActionType = null
+                Log.d(TAG, "onConfirmCard ACTION confirmado: $type")
                 layer.addHistory(ime.getString(R.string.assistant_action_done, actionLabel(type)))
                 layer.showInput()
             }
@@ -462,7 +458,6 @@ class AssistantHost(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT,
         )
-        applySuggestionStripMargin()
         suggestion.visibility = View.VISIBLE
         layer.visibility = View.GONE
     }

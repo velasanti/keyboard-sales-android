@@ -19,6 +19,6 @@
     <string name="assistant_action_derive">Derivar a un compañero</string>
     <string name="assistant_action_order">Orden de venta</string>
     <string name="assistant_action_generic">Acción</string>
-    <string name="assistant_action_confirm">%1$s (dummy). En esta fase no hay efecto real que ejecutar; confirmá para registrar la acción.</string>
+    <string name="assistant_action_confirm">%1$s (dummy). En esta fase no hay efecto real que ejecutar; confirma para registrar la acción.</string>
     <string name="assistant_action_done">Acción confirmada (dummy, sin efecto): %1$s</string>
 </resources>

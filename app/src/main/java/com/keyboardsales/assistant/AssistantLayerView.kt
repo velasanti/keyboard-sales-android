@@ -107,7 +107,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
             )
             background = inputBackground(context)
         }
-        val inputHeight = context.resources.getDimensionPixelSize(R.dimen.size_touch_min)
+        val inputHeight = context.resources.getDimensionPixelSize(R.dimen.size_control_height_sm)
         addView(inputBox, LayoutParams(LayoutParams.MATCH_PARENT, inputHeight))
 
         confirmText.run {
@@ -209,7 +209,13 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
                 0,
             )
             addView(title, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(close)
+            addView(
+                close,
+                LayoutParams(
+                    LayoutParams.WRAP_CONTENT,
+                    context.resources.getDimensionPixelSize(R.dimen.size_control_height_sm),
+                ),
+            )
             setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
         }
     }
