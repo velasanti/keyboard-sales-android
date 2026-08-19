@@ -21,4 +21,17 @@
     <string name="assistant_action_generic">Acción</string>
     <string name="assistant_action_confirm">%1$s (dummy). En esta fase no hay efecto real que ejecutar; confirma para registrar la acción.</string>
     <string name="assistant_action_done">Acción confirmada (dummy, sin efecto): %1$s</string>
+    <!-- Cotización en PDF (Paso 6, acción PDF real) -->
+    <string name="assistant_action_pdf_preview">Cotización en PDF · %1$d ítems · Total %2$s</string>
+    <string name="assistant_action_pdf_done">Cotización generada y lista para compartir.</string>
+    <string name="quote_share_title">Compartir cotización</string>
+    <!-- Textos que se dibujan dentro del documento PDF -->
+    <string name="quote_title">Cotización</string>
+    <string name="quote_customer">Cliente</string>
+    <string name="quote_product">Producto</string>
+    <string name="quote_quantity">Cantidad</string>
+    <string name="quote_unit_price">P. unitario</string>
+    <string name="quote_subtotal">Subtotal</string>
+    <string name="quote_total">Total</string>
+    <string name="quote_generated_by">Generada por %1$s</string>
 </resources>

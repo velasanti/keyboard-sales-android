@@ -240,7 +240,6 @@ class VitrinaHost(private val ime: SalesIME) {
             barView?.showConfirm(message)
             showBar()
         }
-        panel.onClose = { hidePanel() }
     }
 
     private fun showPanel() {
@@ -276,6 +275,9 @@ class VitrinaHost(private val ime: SalesIME) {
             PanelAction.HIDE -> hidePanel()
         }
     }
+
+    /** Si el panel de Vitrina modo esta abierto (lo consulta AssistantHost para el ancla ☰). */
+    val isPanelVisible: Boolean get() = panelVisible
 
     /** Cierra Vitrina modo si esta abierto (exclusion mutua con la capa ✨). */
     fun closePanel() {

@@ -7,7 +7,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import com.keyboardsales.vitrina.bar.VitrinaChipView
 import com.keyboardsales.vitrina.data.CatalogGrouping
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.MessageVariant
@@ -32,7 +31,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
     var onProductClick: ((CatalogItem) -> Unit)? = null
     var onVariantClick: ((CatalogItem, MessageVariant) -> Unit)? = null
     var onQuickReplyClick: ((QuickReply) -> Unit)? = null
-    var onClose: (() -> Unit)? = null
 
     init {
         orientation = VERTICAL
@@ -85,12 +83,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 context.resources.getDimension(R.dimen.type_body_regular_size),
             )
         }
-        val close = VitrinaChipView(
-            context,
-            context.getString(R.string.vitrina_close),
-            context.getString(R.string.vitrina_close),
-            accent = false,
-        ).apply { setOnClickListener { onClose?.invoke() } }
         return LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -101,7 +93,6 @@ class VitrinaPanelView(context: Context) : LinearLayout(context) {
                 0,
             )
             addView(title, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(close)
             setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
         }
     }

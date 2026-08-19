@@ -128,8 +128,8 @@ cd keyboard-sales-android
 ./gradlew :app:installDebug
 
 # Lint y formato
-./gradlew ktlintCheck            # AJUSTAR: nombre real de la tarea del plugin
 ./gradlew :app:lintDebug
+# (No hay tarea de ktlint en este repo: el CI cae a un warning por eso, ver .github/workflows/ci.yml)
 
 # Tests unitarios
 ./gradlew testDebugUnitTest

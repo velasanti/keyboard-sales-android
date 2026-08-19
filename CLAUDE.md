@@ -84,7 +84,6 @@ El único claim correcto, literal: **"No leemos ni guardamos lo que dice tu clie
 ./gradlew :app:assembleDebug               # el módulo único (es el teclado)
 
 # Calidad — todo esto corre en CI, corrélo antes de commitear
-./gradlew ktlintCheck
 ./gradlew testDebugUnitTest
 python3 design/check-contrast.py                              # 72 pares de color en 2 modos
 python3 design/gen-tokens.py --out . --check --platform android  # ¿tokens sincronizados?

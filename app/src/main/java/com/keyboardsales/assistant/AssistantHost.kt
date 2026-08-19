@@ -14,11 +14,16 @@ import com.keyboardsales.assistant.action.DummyActionResolver
 import com.keyboardsales.assistant.consult.DummyConsultant
 import com.keyboardsales.assistant.intent.AssistantIntentType
 import com.keyboardsales.assistant.intent.DummyIntentDetector
+import com.keyboardsales.assistant.quote.DemoQuote
+import com.keyboardsales.assistant.quote.PdfQuoteGenerator
+import com.keyboardsales.assistant.quote.Quote
+import com.keyboardsales.assistant.quote.QuoteShare
 import com.keyboardsales.assistant.redact.DummyRedactor
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.expandTouchTarget
 import com.keyboardsales.vitrina.insert.InsertController
+import com.keyboardsales.vitrina.insert.PriceFormatter
 import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.R
@@ -53,12 +58,15 @@ class AssistantHost(
 
     private var layerView: AssistantLayerView? = null
     private var layerActive = false
+    private var catalogAnchorView: android.widget.TextView? = null
+    private var assistantAnchorView: android.widget.TextView? = null
 
     private val searchExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var sendSequence = 0
     private var pendingMessage: String? = null
     private var pendingActionType: ActionType? = null
+    private var pendingQuote: Quote? = null
     private var insertedLength = 0
     private var undoShowing = false
     private var undoRunnable: Runnable? = null
@@ -78,21 +86,25 @@ class AssistantHost(
     }
 
     private fun injectLayer() {
-        val container = stripContent ?: return
+        // La capa ✨ va en strip_container (el FrameLayout raíz), NO en strip_content:
+        // strip_content empieza después del anchor_slot (☰/✦), y la fila de la caja
+        // de texto del ✨ no tiene anclas — debe ocupar TODO el ancho de la barra,
+        // no el ancho recortado por el anchor_slot.
+        val container = stripContainer ?: return
         val layer = AssistantLayerView(container.context).apply {
             visibility = View.GONE
-            onClose = { hideLayer() }
             onSend = { handleSend() }
             onConfirm = { onConfirmCard() }
             onCancelConfirm = { cancelConfirm() }
             onUndo = { performUndo() }
+            onInputResized = { layerHeight -> resizeStrip(layerHeight) }
         }
         layerView = layer
         container.addView(
             layer,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
     }
@@ -133,6 +145,7 @@ class AssistantHost(
                 // Exclusion mutua: si ✨ esta activo, se cierra antes de abrir Vitrina.
                 if (layerActive) hideLayer()
                 vitrinaHost.togglePanel()
+                updateAnchorStates()
             }
             background = anchorBackground(context)
         }
@@ -159,6 +172,9 @@ class AssistantHost(
             contentDescription = context.getString(R.string.assistant_anchor_open)
             setOnClickListener { toggleLayer() }
         }
+
+        catalogAnchorView = catalogAnchor
+        assistantAnchorView = assistantAnchor
 
         val bar = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -225,16 +241,34 @@ class AssistantHost(
         }
     }
 
-    private fun anchorBackground(context: android.content.Context): android.graphics.drawable.GradientDrawable {
+    private fun anchorBackground(context: android.content.Context, active: Boolean = false): android.graphics.drawable.GradientDrawable {
         val resources = context.resources
         val radius = resources.getDimension(R.dimen.radius_pill)
         val stroke = resources.getDimension(R.dimen.border_width_hairline).toInt()
         return android.graphics.drawable.GradientDrawable().apply {
             shape = android.graphics.drawable.GradientDrawable.RECTANGLE
             cornerRadius = radius
-            setColor(ContextCompat.getColor(context, R.color.surface_raised))
-            setStroke(stroke, ContextCompat.getColor(context, R.color.border_subtle))
+            setColor(ContextCompat.getColor(context, if (active) R.color.content_primary else R.color.surface_raised))
+            setStroke(stroke, ContextCompat.getColor(context, if (active) R.color.content_primary else R.color.border_subtle))
         }
+    }
+
+    /**
+     * Inversion del ancla cuando su panel esta activo (2026-08-19): glifo blanco
+     * sobre fondo oscuro (content_primary), al reves del estado normal (glifo
+     * content_primary sobre surface_raised). Cerrar es tocar de nuevo el ancla.
+     */
+    private fun setAnchorActive(anchor: android.widget.TextView, active: Boolean) {
+        val context = anchor.context
+        anchor.setTextColor(
+            ContextCompat.getColor(context, if (active) R.color.surface_raised else R.color.content_primary),
+        )
+        anchor.background = anchorBackground(context, active)
+    }
+
+    private fun updateAnchorStates() {
+        catalogAnchorView?.let { setAnchorActive(it, vitrinaHost.isPanelVisible) }
+        assistantAnchorView?.let { setAnchorActive(it, layerActive) }
     }
 
     // ------------------------------------------------------------------
@@ -290,12 +324,30 @@ class AssistantHost(
                 // la UI de confirmacion, la pieza que despues nunca se salta.
                 AssistantIntentType.ACTION -> {
                     val proposal = DummyActionResolver.resolve(text)
-                    val label = actionLabel(proposal.type)
-                    val summary = ime.getString(R.string.assistant_action_confirm, label)
-                    mainHandler.post {
-                        if (seq == sendSequence) {
-                            pendingActionType = proposal.type
-                            layer.showConfirm(summary)
+                    if (proposal.type == ActionType.PDF) {
+                        // Paso 6 real: la cotización se arma con datos placeholder y la
+                        // tarjeta de confirmación muestra un resumen concreto (ADR-016).
+                        val quote = DemoQuote.build()
+                        val preview = ime.getString(
+                            R.string.assistant_action_pdf_preview,
+                            quote.itemCount(),
+                            PriceFormatter.format(quote.total(), quote.moneda),
+                        )
+                        mainHandler.post {
+                            if (seq == sendSequence) {
+                                pendingActionType = proposal.type
+                                pendingQuote = quote
+                                layer.showConfirm(preview)
+                            }
+                        }
+                    } else {
+                        val label = actionLabel(proposal.type)
+                        val summary = ime.getString(R.string.assistant_action_confirm, label)
+                        mainHandler.post {
+                            if (seq == sendSequence) {
+                                pendingActionType = proposal.type
+                                layer.showConfirm(summary)
+                            }
                         }
                     }
                     return@execute
@@ -326,10 +378,17 @@ class AssistantHost(
             pendingMessage != null -> performInsert()
             pendingActionType != null -> {
                 val type = pendingActionType!!
+                val quote = pendingQuote
                 pendingActionType = null
-                Log.d(TAG, "onConfirmCard ACTION confirmado: $type")
-                layer.addHistory(ime.getString(R.string.assistant_action_done, actionLabel(type)))
-                layer.showInput()
+                pendingQuote = null
+                if (type == ActionType.PDF && quote != null) {
+                    Log.d(TAG, "onConfirmCard ACTION confirmado: PDF (${quote.itemCount()} items)")
+                    executePdf(quote)
+                } else {
+                    Log.d(TAG, "onConfirmCard ACTION confirmado: $type")
+                    layer.addHistory(ime.getString(R.string.assistant_action_done, actionLabel(type)))
+                    layer.showInput()
+                }
             }
         }
     }
@@ -338,7 +397,30 @@ class AssistantHost(
     private fun cancelConfirm() {
         pendingMessage = null
         pendingActionType = null
+        pendingQuote = null
         layerView?.showInput()
+    }
+
+    // ------------------------------------------------------------------
+    // Accion PDF real (Paso 6): generacion del documento + share
+    // ------------------------------------------------------------------
+
+    /**
+     * Genera el PDF fuera del hilo de UI (regla 7) y, al terminar, lanza el
+     * chooser de compartir. ADR-016 ya pasó por la confirmación: acá solo se
+     * ejecuta lo que el vendedor aprobó. El archivo queda en filesDir/quotes/,
+     * sin subir a ningún servidor.
+     */
+    private fun executePdf(quote: Quote) {
+        layerView?.showInput()
+        val context = ime.applicationContext
+        searchExecutor.execute {
+            val file = PdfQuoteGenerator.generate(context, quote)
+            mainHandler.post {
+                QuoteShare.share(ime, file)
+                layerView?.addHistory(ime.getString(R.string.assistant_action_pdf_done))
+            }
+        }
     }
 
     private fun actionLabel(type: ActionType): String = when (type) {
@@ -430,13 +512,23 @@ class AssistantHost(
             LinearLayout.LayoutParams.MATCH_PARENT,
             container.resources.getDimensionPixelSize(R.dimen.kb_bar_height_expanded),
         )
+        // Franja angosta (2026-08-19): la capa ✨ es una sola fila DEBAJO del
+        // campo de predicción, que queda visible (no se tapa). El contenedor
+        // expande a 96dp = predicción (48dp, arriba) + fila ✨ (48dp, abajo).
+        val barHeight = container.resources.getDimensionPixelSize(R.dimen.kb_bar_height)
         suggestion.layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
-            container.resources.getDimensionPixelSize(R.dimen.kb_bar_height),
+            barHeight,
             Gravity.TOP,
         )
-        suggestion.visibility = View.GONE
+        suggestion.visibility = View.VISIBLE
+        layer.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM,
+        )
         layer.visibility = View.VISIBLE
+        updateAnchorStates()
     }
 
     private fun hideLayer() {
@@ -445,6 +537,7 @@ class AssistantHost(
         cancelPendingUndo()
         pendingMessage = null
         pendingActionType = null
+        pendingQuote = null
         insertedLength = 0
         val container = stripContainer ?: return
         val suggestion = suggestionStripView ?: return
@@ -460,6 +553,28 @@ class AssistantHost(
         )
         suggestion.visibility = View.VISIBLE
         layer.visibility = View.GONE
+        updateAnchorStates()
+    }
+
+    /**
+     * Auto-expand de la caja del ✨: el alto de la capa viene ya calculado desde
+     * el lineCount del EditText (sin dependencia circular), así que acá solo se
+     * fija el alto de la barra = predicción (48dp) + capa. El resize se DIFIERE
+     * con post() para no mutar el layout durante el layout en curso (eso era lo
+     * que corrompía el ancho a 661px). La guarda de "mismo alto" evita el bucle.
+     */
+    private fun resizeStrip(layerHeight: Int) {
+        if (!layerActive) return
+        val container = stripContainer ?: return
+        container.post {
+            if (!layerActive) return@post
+            val suggestionHeight = container.resources.getDimensionPixelSize(R.dimen.kb_bar_height)
+            val newHeight = suggestionHeight + layerHeight
+            val lp = container.layoutParams as? LinearLayout.LayoutParams ?: return@post
+            if (lp.height == newHeight) return@post
+            lp.height = newHeight
+            container.layoutParams = lp
+        }
     }
 
     fun resetToIdle() {

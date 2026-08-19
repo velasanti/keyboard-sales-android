@@ -4,33 +4,40 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.view.Gravity
-import android.view.View
+import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import helium314.keyboard.latin.R
 
 /**
- * La capa ✨: reemplaza la franja de sugerencias cuando el asistente esta activo.
- * 04.4 §3 — es una capa, no un modo: el QWERTY nunca se toca.
+ * La capa ✨ como FRANJA ANGOSTA (decisión 2026-08-19): una sola fila con la
+ * caja de texto del vendedor (que muestra mensajes de ejemplo rotando cuando
+ * está vacía). No hay header, historial ni botón de cerrar: cerrar es tocar de
+ * nuevo ✦, igual que en el panel de ☰ (Vitrina). El campo de predicción de
+ * texto normal queda visible debajo/arriba, no se tapa.
  *
- * Paso 1 (shell): solo la estructura visual — historial de la IA arriba y
- * cuadro de texto propio del vendedor justo encima del QWERTY. La captura de
- * teclado (Paso 2) y el intent dummy (Paso 3) se enganchan despues.
+ * La caja es un [EditText] real: el vendedor puede tocar en medio del texto
+ * para posicionar el cursor y corregir, y la caja crece en alto (auto-expand)
+ * hasta [MAX_INPUT_LINES] líneas antes de hacer scroll interno. La escritura
+ * sigue llegando por [onAssistantEvent] desde el QWERTY (no por el teclado del
+ * sistema), pero se inserta en la posición del cursor, no siempre al final.
+ *
+ * La tarjeta de confirmación (ADR-016) y el Deshacer reemplazan esa fila en el
+ * mismo lugar (showConfirm / showUndo). Las respuestas de consulta y el
+ * resultado de una acción se muestran como hint transitorio (addHistory), que
+ * se reemplaza apenas el vendedor escribe.
  */
 class AssistantLayerView(context: Context) : LinearLayout(context) {
 
-    private val historyList = LinearLayout(context).apply { orientation = VERTICAL }
-    private val historyScroll = ScrollView(context)
-    private val historyPlaceholder = TextView(context)
-    private val inputBox = TextView(context)
+    private val inputBox = EditText(context)
+    private val inputRow = LinearLayout(context)
     private val confirmCard = LinearLayout(context)
-    private val confirmText = TextView(context)
+    private val confirmText = android.widget.TextView(context)
     private val undoCard = LinearLayout(context)
 
-    private val input = StringBuilder()
+    private var resultText: String? = null
 
     private val exampleMessageRes = intArrayOf(
         R.string.assistant_example_1,
@@ -45,7 +52,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     private val rotationHandler = Handler(Looper.getMainLooper())
     private val rotationRunnable = object : Runnable {
         override fun run() {
-            if (input.isEmpty()) {
+            if (inputBox.text.isEmpty() && resultText == null) {
                 exampleIndex = (exampleIndex + 1) % exampleMessageRes.size
                 renderInput()
             }
@@ -53,68 +60,78 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
         }
     }
 
-    var onClose: (() -> Unit)? = null
     var onSend: (() -> Unit)? = null
     var onConfirm: (() -> Unit)? = null
     var onCancelConfirm: (() -> Unit)? = null
     var onUndo: (() -> Unit)? = null
 
+    /**
+     * Se dispara cuando la caja cambia de alto (auto-expand) con el alto DESEADO
+     * de la capa en px, calculado desde el lineCount del EditText (independiente
+     * del alto del contenedor, sin dependencia circular).
+     */
+    var onInputResized: ((Int) -> Unit)? = null
+
     init {
         orientation = VERTICAL
         setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
-        addView(header(context))
-        historyPlaceholder.run {
-            setText(R.string.assistant_history_placeholder)
-            gravity = Gravity.TOP
-            setSingleLine(true)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
-            setTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_supporting_label_size),
-            )
-            setPadding(
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                context.resources.getDimensionPixelSize(R.dimen.spacing_2),
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                context.resources.getDimensionPixelSize(R.dimen.spacing_2),
-            )
-        }
-        historyList.addView(historyPlaceholder)
-        historyScroll.run {
-            isVerticalScrollBarEnabled = false
-            addView(historyList, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        }
-        addView(historyScroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         inputBox.run {
-            setText(R.string.assistant_input_placeholder)
-            gravity = Gravity.CENTER_VERTICAL
-            setSingleLine(true)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
+            setSingleLine(false)
+            minLines = 1
+            maxLines = MAX_INPUT_LINES
+            minHeight = context.resources.getDimensionPixelSize(R.dimen.size_control_height_sm)
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isCursorVisible = true
+            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
+            setHintTextColor(ContextCompat.getColor(context, R.color.content_secondary))
             setTextSize(
                 android.util.TypedValue.COMPLEX_UNIT_PX,
                 context.resources.getDimension(R.dimen.type_body_small_size),
             )
             setPadding(
                 context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
                 context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
             )
             background = inputBackground(context)
+            // Auto-expand: calcula el alto deseado de la capa desde el lineCount
+            // del propio EditText (no desde el alto medido del contenedor). Rompe
+            // la dependencia circular de "medir la propia altura para decidirla".
+            addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                val lineHeight = lineHeight
+                if (lineHeight <= 0) return@addOnLayoutChangeListener
+                val textHeight = lineCount.coerceAtMost(MAX_INPUT_LINES) * lineHeight +
+                    paddingTop + paddingBottom
+                val layerHeight = textHeight + inputRow.paddingTop + inputRow.paddingBottom
+                onInputResized?.invoke(layerHeight)
+            }
         }
-        val inputHeight = context.resources.getDimensionPixelSize(R.dimen.size_control_height_sm)
-        addView(inputBox, LayoutParams(LayoutParams.MATCH_PARENT, inputHeight))
+
+        inputRow.run {
+            orientation = HORIZONTAL
+            gravity = Gravity.TOP
+            setPadding(
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
+                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
+            )
+            addView(inputBox, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        }
+        addView(inputRow, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         confirmText.run {
-            setSingleLine(true)
-            maxLines = 1
+            setSingleLine(false)
+            maxLines = MAX_CONFIRM_LINES
             ellipsize = android.text.TextUtils.TruncateAt.END
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.TOP or Gravity.START
             setTextColor(ContextCompat.getColor(context, R.color.content_primary))
             setTextSize(
                 android.util.TypedValue.COMPLEX_UNIT_PX,
@@ -140,17 +157,26 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
         }
         cancel.setOnClickListener { onCancelConfirm?.invoke() ?: showInput() }
         confirmCard.run {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = VERTICAL
             setPadding(
                 context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
                 context.resources.getDimensionPixelSize(R.dimen.spacing_1),
                 context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
                 context.resources.getDimensionPixelSize(R.dimen.spacing_1),
             )
-            addView(confirmText, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(cancel)
-            addView(confirm)
+            addView(confirmText, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+            val buttons = LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                gravity = Gravity.END
+                addView(
+                    cancel,
+                    LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                        marginEnd = context.resources.getDimensionPixelSize(R.dimen.kb_bar_gap)
+                    },
+                )
+                addView(confirm)
+            }
+            addView(buttons, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
             visibility = GONE
         }
         addView(confirmCard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
@@ -178,92 +204,66 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
         }
         addView(undoCard, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         showInput()
+        renderInput()
         rotationHandler.postDelayed(rotationRunnable, EXAMPLE_ROTATION_MS)
     }
 
-    private fun header(context: Context): LinearLayout {
-        val title = TextView(context).apply {
-            setText(R.string.assistant_title)
-            setSingleLine(true)
-            maxLines = 1
-            gravity = Gravity.CENTER_VERTICAL
-            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
-            setTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_body_regular_size),
-            )
-        }
-        val close = AssistantAnchorView(context).apply {
-            text = "✕"
-            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
-            contentDescription = context.getString(R.string.assistant_close)
-            setOnClickListener { onClose?.invoke() }
-        }
-        return LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                0,
-            )
-            addView(title, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(
-                close,
-                LayoutParams(
-                    LayoutParams.WRAP_CONTENT,
-                    context.resources.getDimensionPixelSize(R.dimen.size_control_height_sm),
-                ),
-            )
-            setBackgroundColor(ContextCompat.getColor(context, R.color.surface_panel))
-        }
-    }
-
     // ------------------------------------------------------------------
-    // Captura de entrada del QWERTY (Paso 2) — el texto vive en [input],
-    // nunca en el campo de la app anfitriona.
+    // Captura de entrada del QWERTY (Paso 2) — el texto vive en el EditText,
+    // nunca en el campo de la app anfitriona. Se inserta en el cursor.
     // ------------------------------------------------------------------
 
     fun inputCharacter(codePoint: Int) {
         if (codePoint < 0) return
         val ch = codePoint.toChar()
         if (!ch.isDefined() || ch == '\n') return
-        input.append(ch)
+        resultText = null
+        val start = inputBox.selectionStart
+        val end = inputBox.selectionEnd
+        inputBox.text.replace(start, end, ch.toString())
+        inputBox.setSelection(start + 1)
         renderInput()
     }
 
     fun inputBackspace() {
-        if (input.isEmpty()) return
-        input.deleteCharAt(input.length - 1)
+        resultText = null
+        val start = inputBox.selectionStart
+        val end = inputBox.selectionEnd
+        if (start != end) {
+            inputBox.text.delete(start, end)
+        } else if (start > 0) {
+            inputBox.text.delete(start - 1, start)
+        }
         renderInput()
     }
 
     fun send() {
-        if (input.isNotEmpty()) onSend?.invoke()
-        input.clear()
+        if (inputBox.text.isNotEmpty()) onSend?.invoke()
+        inputBox.text.clear()
+        resultText = null
         renderInput()
     }
 
     fun clearInput() {
-        input.clear()
+        inputBox.text.clear()
+        resultText = null
         renderInput()
     }
 
-    fun currentInput(): String = input.toString()
+    fun currentInput(): String = inputBox.text.toString()
 
     /** Confirmacion ADR-016: el mensaje redactado a la vista antes de insertar. */
     fun showConfirm(message: String) {
         confirmText.text = message
         confirmText.contentDescription = message
-        inputBox.visibility = GONE
+        inputRow.visibility = GONE
         confirmCard.visibility = VISIBLE
         undoCard.visibility = GONE
     }
 
     /** Deshacer: la insercion ya ocurrio, se ofrece revertirla. */
     fun showUndo() {
-        inputBox.visibility = GONE
+        inputRow.visibility = GONE
         confirmCard.visibility = GONE
         undoCard.visibility = VISIBLE
     }
@@ -272,48 +272,20 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
     fun showInput() {
         confirmCard.visibility = GONE
         undoCard.visibility = GONE
-        inputBox.visibility = VISIBLE
+        inputRow.visibility = VISIBLE
     }
 
     /**
-     * Agrega una fila al historial de la IA (respuesta / resultado). La primera
-     * fila reemplaza el placeholder de "historial vacio".
+     * Muestra una respuesta (consulta, resultado de acción) como hint transitorio
+     * en la caja. Se reemplaza en cuanto el vendedor escribe.
      */
     fun addHistory(text: String) {
-        val context = context
-        if (historyList.indexOfChild(historyPlaceholder) >= 0) {
-            historyList.removeView(historyPlaceholder)
-        }
-        val row = TextView(context).apply {
-            this.text = text
-            setSingleLine(true)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(ContextCompat.getColor(context, R.color.content_primary))
-            setTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_PX,
-                context.resources.getDimension(R.dimen.type_body_small_size),
-            )
-            setPadding(
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
-                context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h),
-                context.resources.getDimensionPixelSize(R.dimen.spacing_1),
-            )
-        }
-        historyList.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        historyScroll.post { historyScroll.fullScroll(View.FOCUS_DOWN) }
+        resultText = text
+        renderInput()
     }
 
     private fun renderInput() {
-        val context = context
-        if (input.isEmpty()) {
-            inputBox.setText(exampleMessageRes[exampleIndex])
-            inputBox.setTextColor(ContextCompat.getColor(context, R.color.content_secondary))
-        } else {
-            inputBox.text = input.toString()
-            inputBox.setTextColor(ContextCompat.getColor(context, R.color.content_primary))
-        }
+        inputBox.hint = resultText ?: context.getString(exampleMessageRes[exampleIndex])
     }
 
     private fun inputBackground(context: Context): GradientDrawable {
@@ -330,5 +302,7 @@ class AssistantLayerView(context: Context) : LinearLayout(context) {
 
     private companion object {
         const val EXAMPLE_ROTATION_MS = 3_500L
+        const val MAX_INPUT_LINES = 4
+        const val MAX_CONFIRM_LINES = 4
     }
 }
