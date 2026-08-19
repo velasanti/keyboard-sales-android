@@ -6,6 +6,21 @@
 
 ---
 
+## Reglas operativas para el agente
+
+**No crear `AGENTS.md` en este repo.** OpenCode lee `AGENTS.md` en vez de
+`CLAUDE.md` si ambos existen — no los combina. Crear `AGENTS.md` apagaria
+en silencio el criterio de verificacion que vive en este archivo, sin
+ningun aviso. Si algun dia se decide migrar, se hace en un solo PR que
+borra `CLAUDE.md` en el mismo commit, nunca los dos coexistiendo.
+
+**Leer `GOTCHAS.md` antes de tocar build, tokens, o CI.** Errores ya
+conocidos, con su causa, para no volver a perder tiempo redescubriendolos.
+Cuando algo falle por una causa no obvia, anotarlo ahi antes de cerrar la
+tarea — no despues.
+
+---
+
 ## ¿Qué es Keyboard Sales AI?
 
 Un **teclado nativo (IME) + app compañera** para equipos de ventas en Latinoamérica. Lleva el conocimiento de la empresa al vendedor **dentro del chat**, sin que tenga que salir de la conversación con el cliente.
