@@ -110,6 +110,16 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
 
     fun onFieldFocused(editorInfo: EditorInfo?) {
         editorMimes = editorInfo?.contentMimeTypes?.toList()
+        // Diagnostico en dispositivo (android.util.Log.i directo, no el wrapper
+        // de HeliBoard que gatea Log.d): sin esta linea, un showsStrip=false
+        // es silencioso y la franja "no aparece" sin rastro.
+        android.util.Log.i(
+            TAG,
+            "onFieldFocused pkg=${editorInfo?.packageName} " +
+                "mimes=${editorMimes?.joinToString(prefix = "[", postfix = "]") ?: "null"} " +
+                "muestraFranja=${ContentCommitPolicy.showsStrip(editorMimes)} " +
+                "pendienteResultado=$pendingResult suprimir=$suppressNextAutoExpand",
+        )
         if (pendingResult || suppressNextAutoExpand) {
             // Volviendo de un picker, o recien se inserto algo: la franja no
             // se re-abre sola para no titilar justo despues de usarla.
@@ -367,6 +377,7 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
 
     private fun setState(next: AttachMenuState) {
         if (next.panel == state.panel) return
+        android.util.Log.i(TAG, "franja ${state.panel} -> ${next.panel}")
         state = next
         val strip = stripView ?: return
         strip.render(next.panel)
