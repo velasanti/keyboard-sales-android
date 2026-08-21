@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plus_attach">Adjuntar</string>
+    <string name="plus_camera">Cámara</string>
+    <string name="plus_photos">Fotos</string>
+    <string name="plus_more">Más</string>
+    <string name="plus_document">Documento</string>
+    <string name="plus_location">Ubicación</string>
+    <string name="plus_contact">Contacto</string>
+    <string name="plus_attach_cd">Abrir adjuntos</string>
+    <string name="plus_close_cd">Cerrar adjuntos</string>
+    <string name="plus_back_cd">Volver al menú de adjuntos</string>
+    <string name="plus_camera_cd">Adjuntar foto de cámara</string>
+    <string name="plus_photos_cd">Adjuntar foto de la galería</string>
+    <string name="plus_more_cd">Más opciones para adjuntar</string>
+    <string name="plus_document_cd">Adjuntar documento del dispositivo</string>
+    <string name="plus_location_cd">Adjuntar ubicación</string>
+    <string name="plus_contact_cd">Adjuntar contacto</string>
+    <string name="plus_coming_soon">Disponible próximamente</string>
+    <string name="plus_camera_unavailable">No se encontró una app de cámara</string>
+    <string name="plus_action_failed">No se pudo preparar el adjunto</string>
+    <string name="plus_clip_label">adjunto del teclado</string>
+</resources>

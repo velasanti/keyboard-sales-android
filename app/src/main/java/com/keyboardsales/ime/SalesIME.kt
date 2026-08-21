@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import com.keyboardsales.assistant.AssistantHost
+import com.keyboardsales.plus.AttachHost
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
@@ -27,6 +28,7 @@ class SalesIME : LatinIME() {
 
     private lateinit var vitrinaHost: VitrinaHost
     private lateinit var assistantHost: AssistantHost
+    private lateinit var attachHost: AttachHost
     private lateinit var catalogRepository: CatalogRepository
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -37,6 +39,11 @@ class SalesIME : LatinIME() {
         android.util.Log.i("BuildInfo", "commit=${BuildConfig.BUILD_COMMIT} rama=${BuildConfig.BUILD_BRANCH}")
         vitrinaHost = VitrinaHost(this)
         assistantHost = AssistantHost(this, vitrinaHost)
+        attachHost = AttachHost(this)
+        // Exclusion mutua de superficies: cuando abre Vitrina modo o la capa ✨,
+        // la franja de adjuntos colapsa (mismo criterio entre ☰ y ✨).
+        vitrinaHost.onSurfaceOpened = { attachHost.collapse() }
+        assistantHost.onSurfaceOpened = { attachHost.collapse() }
         catalogRepository = CatalogRepository(applicationContext)
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
@@ -61,6 +68,7 @@ class SalesIME : LatinIME() {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
         assistantHost.onInputView(view)
+        attachHost.onInputView(view)
     }
 
     /**
@@ -78,6 +86,9 @@ class SalesIME : LatinIME() {
         } else if (vitrinaHost.isSearchCaptureActive) {
             vitrinaHost.onSearchEvent(event)
         } else {
+            // Tecla hacia el anfitrion: para la franja de adjuntos es la señal
+            // canonica de "el vendedor paso a modo texto" y rinde su alto.
+            attachHost.onKeyboardEvent()
             super.onEvent(event)
         }
     }
@@ -86,12 +97,14 @@ class SalesIME : LatinIME() {
         super.onStartInputView(editorInfo, restarting)
         vitrinaHost.onStartInputView(editorInfo, restarting)
         assistantHost.resetToIdle()
+        attachHost.onFieldFocused(editorInfo)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         vitrinaHost.onFinishInputView(finishingInput)
         assistantHost.resetToIdle()
+        attachHost.onFinishInput()
     }
 
     override fun onUpdateSelection(

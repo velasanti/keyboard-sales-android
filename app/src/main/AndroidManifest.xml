@@ -90,6 +90,13 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             android:theme="@style/TransparentActivityTheme" android:excludeFromRecents="true" android:noHistory="true"
             android:windowSoftInputMode="adjustResize|stateAlwaysVisible" android:configChanges="orientation|screenSize"/>
 
+        <!-- Keyboard Sales AI: trampolin de resultados para los adjuntos del boton ＋
+             (camara/fotos/documento). Un IME no recibe onActivityResult; esta activity
+             aloja la llamada. Aditiva, mismo patron que el FileProvider de cotizacion. -->
+        <activity android:name="com.keyboardsales.plus.AttachPickActivity" android:exported="false"
+            android:theme="@style/TransparentActivityTheme" android:excludeFromRecents="true" android:noHistory="true"
+            android:configChanges="orientation|screenSize"/>
+
         <!-- Broadcast receivers -->
         <receiver android:name="SystemBroadcastReceiver"
                 android:exported="true">
