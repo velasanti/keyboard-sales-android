@@ -75,6 +75,7 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
 
     private var stripView: AttachStripView? = null
     private var state = AttachMenuState()
+    private var franjaHeightPx = 0
 
     private var editorMimes: List<String>? = null
     private var pendingResult = false
@@ -93,15 +94,17 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     fun onInputView(view: View) {
         val stripContainer = view.findViewById<FrameLayout>(R.id.strip_container) ?: return
         val root = stripContainer.parent as? ViewGroup ?: return
+        val height = view.resources.getDimensionPixelSize(R.dimen.kb_bar_height)
         // Si el root ya trae franja (vista recreada sobre el mismo arbol), se reusa.
         val existing = root.getChildAt(0) as? AttachStripView
         val strip = existing ?: AttachStripView(view.context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                view.resources.getDimensionPixelSize(R.dimen.kb_bar_height),
+                height,
             )
             visibility = View.GONE
         }
+        franjaHeightPx = height
         strip.callbacks = this
         stripView = strip
         if (existing == null) root.addView(strip, 0)
@@ -145,6 +148,14 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     fun collapse() {
         setState(state.collapse())
     }
+
+    /**
+     * Alto extra que la franja agrega sobre el teclado estandar, en px.
+     * 0 si esta colapsada. Lo consume SalesIME.onComputeInsets para corregir
+     * los insets que upstream calcula sin conocer la franja (ver ahi).
+     */
+    fun expansionInsetPx(): Int =
+        if (state.isVisible && franjaHeightPx > 0) franjaHeightPx else 0
 
     // ------------------------------------------------------------------
     // Callbacks de la franja
