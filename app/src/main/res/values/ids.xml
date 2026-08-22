@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Id fijo del badge de identidad de build (debug): showBuildBadge lo busca
+     por id para reutilizarlo en vez de agregar uno nuevo por cada setInputView.
+     Restaurado: habia sido eliminado en e8b3291b durante un pulido de UI. -->
+<resources>
+    <item name="build_badge" type="id" />
+</resources>
