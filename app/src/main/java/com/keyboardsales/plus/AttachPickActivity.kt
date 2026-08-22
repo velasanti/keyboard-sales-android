@@ -89,14 +89,28 @@ class AttachPickActivity : Activity() {
         deliver(requestCode, resultCode, data)
     }
 
+    /**
+     * Entrega el resultado al host y CIERRA el trampolin.
+     *
+     * Bug 2026-08-22 (reportado en dispositivo): sin el finish() de aca, esta
+     * activity translucida quedaba viva despues de la camara/picker — nada la
+     * volvia a cerrar, porque una Activity no se autotermina. Sintomas
+     * exactos: "no deja devolverse" (el back quedaba atrapado en esta
+     * pantalla fantasma) y "toco enviar y no se envia" (el commitContent de
+     * AttachHost podia correr de fondo mientras la pantalla seguia tapada por
+     * este trampolin sin UI). finish() es sin costo aca: ya entrego todo lo
+     * que tenia que entregar, no hay razon para seguir en el stack.
+     */
     private fun deliver(requestCode: Int, resultCode: Int, data: Intent?) {
         val handler = resultHandler ?: run {
             Log.d(TAG, "entrega sin handler (proceso nuevo?): rc=$requestCode")
+            finish()
             return
         }
         resultHandler = null
         resultDelivered = true
         handler(requestCode, resultCode, data)
+        finish()
     }
 
     override fun onDestroy() {
