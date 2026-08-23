@@ -90,24 +90,6 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             android:theme="@style/TransparentActivityTheme" android:excludeFromRecents="true" android:noHistory="true"
             android:windowSoftInputMode="adjustResize|stateAlwaysVisible" android:configChanges="orientation|screenSize"/>
 
-        <!-- Keyboard Sales AI: trampolin de resultados para los adjuntos del boton ＋
-             (camara/fotos/documento). Un IME no recibe onActivityResult; esta activity
-             aloja la llamada. Aditiva, mismo patron que el FileProvider de cotizacion.
-             SIN noHistory: con noHistory=true el sistema finish()eaba este trampolin en
-             el instante en que la camara quedaba visible encima (deja de ser la activity
-             de tope), asi que cuando la camara devolvia el resultado ya no habia una
-             instancia viva para recibirlo — onActivityResult nunca se disparaba (bug
-             reportado en dispositivo 2026-08-22, confirmado con logcat: cero logs de
-             AttachPickActivity en cualquier rama, sin crash del sistema). excludeFromRecents
-             ya lo mantiene fuera de la lista de recientes; noHistory era redundante para
-             ese fin y rompia el ciclo de vida que esta activity necesita para cumplir su
-             unico proposito. El finish() explicito en deliver() (fix anterior) sigue
-             cerrandola apenas entrega el resultado, asi que sacar noHistory no la deja
-             viva de mas. -->
-        <activity android:name="com.keyboardsales.plus.AttachPickActivity" android:exported="false"
-            android:theme="@style/TransparentActivityTheme" android:excludeFromRecents="true"
-            android:configChanges="orientation|screenSize"/>
-
         <!-- Broadcast receivers -->
         <receiver android:name="SystemBroadcastReceiver"
                 android:exported="true">

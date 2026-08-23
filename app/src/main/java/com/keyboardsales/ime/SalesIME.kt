@@ -2,12 +2,9 @@ package com.keyboardsales.ime
 
 import android.os.Handler
 import android.os.Looper
-import android.inputmethodservice.InputMethodService
-import android.graphics.Region
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import com.keyboardsales.assistant.AssistantHost
-import com.keyboardsales.plus.AttachHost
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
@@ -31,7 +28,6 @@ class SalesIME : LatinIME() {
 
     private lateinit var vitrinaHost: VitrinaHost
     private lateinit var assistantHost: AssistantHost
-    private lateinit var attachHost: AttachHost
     private lateinit var catalogRepository: CatalogRepository
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -42,7 +38,6 @@ class SalesIME : LatinIME() {
         android.util.Log.i("BuildInfo", "commit=${BuildConfig.BUILD_COMMIT} rama=${BuildConfig.BUILD_BRANCH}")
         vitrinaHost = VitrinaHost(this)
         assistantHost = AssistantHost(this, vitrinaHost)
-        attachHost = AttachHost(this)
         catalogRepository = CatalogRepository(applicationContext)
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
@@ -67,7 +62,6 @@ class SalesIME : LatinIME() {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
         assistantHost.onInputView(view)
-        attachHost.onInputView(view)
     }
 
 
@@ -94,49 +88,12 @@ class SalesIME : LatinIME() {
         super.onStartInputView(editorInfo, restarting)
         vitrinaHost.onStartInputView(editorInfo, restarting)
         assistantHost.resetToIdle()
-        attachHost.onFieldFocused(editorInfo)
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         vitrinaHost.onFinishInputView(finishingInput)
         assistantHost.resetToIdle()
-        attachHost.onFinishInput()
-    }
-
-    /**
-     * Causa raiz medida (SM-A515F, dumpsys window, 2026-08-21): upstream fija
-     * ventana e inputView a MATCH_PARENT (Ktx.updateSoftInputWindowLayoutParameters),
-     * entonces mInputView.getHeight() es constante (~2312px) y su formula de
-     * insets (LatinIME.onComputeInsets:1182) — visibleTopY = inputHeight -
-     * wrapper.height - stripContainer.height — NO contempla la franja de
-     * adjuntos, que es un hijo nuevo del root frame. Resultado medido:
-     * contentTopInsets=[0,1414] y touchableRegion desde y=1502 IDENTICOS con
-     * franja visible y oculta; la franja dibuja fuera de la region tactil y
-     * los insets no crecen, asique WhatsApp deja su composer solapado a ella.
-     *
-     * Fix: despues de super(), restar el alto de la franja a los tres valores.
-     * Es el punto de extension diseñado por AOSP: el framework consume
-     * outInsets cuando onComputeInsets retorna. Sin editar upstream, sin
-     * tocar strip_container (Franja 2).
-     */
-    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
-        super.onComputeInsets(outInsets)
-        if (!::attachHost.isInitialized) return
-        val extra = attachHost.expansionInsetPx()
-        if (extra <= 0) return
-        outInsets.contentTopInsets -= extra
-        outInsets.visibleTopInsets -= extra
-        if (outInsets.touchableInsets == InputMethodService.Insets.TOUCHABLE_INSETS_REGION) {
-            val adjusted = Region(outInsets.touchableRegion)
-            adjusted.translate(0, -extra)
-            outInsets.touchableRegion.set(adjusted)
-        }
-        android.util.Log.i(
-            "AttachPlus",
-            "onComputeInsets +$extra -> contentTop=${outInsets.contentTopInsets} " +
-                "touchTop=${outInsets.touchableRegion.bounds.top}",
-        )
     }
 
     override fun onUpdateSelection(
