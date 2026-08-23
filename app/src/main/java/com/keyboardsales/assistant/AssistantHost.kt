@@ -74,11 +74,6 @@ class AssistantHost(
     /** Si el teclado captura hacia el cuadro de ✨ en vez de al campo anfitrion. */
     val isCaptureActive: Boolean get() = layerActive
 
-    /**
-     * Exclusion mutua con otras superficies del teclado: lo setea SalesIME
-     * para que la franja de adjuntos (＋) colapse cuando la capa ✨ abre.
-     */
-    var onSurfaceOpened: (() -> Unit)? = null
 
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
@@ -505,8 +500,6 @@ class AssistantHost(
         val layer = layerView ?: return
         // Exclusion mutua: si Vitrina modo esta abierto, se cierra antes de abrir ✨.
         vitrinaHost.closePanel()
-        // Exclusion mutua con la franja de adjuntos (＋): se cierra antes de abrir.
-        onSurfaceOpened?.invoke()
         layerActive = true
 
         // Cierra la composicion pendiente del chat (la "media palabra" con subrayado

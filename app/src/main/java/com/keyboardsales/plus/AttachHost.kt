@@ -23,52 +23,37 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Orquestador de la Franja 1 (adjuntos). Duenio de [AttachMenuState]; la
- * vista ([AttachStripView]) es pasiva y se re-renderiza por transicion.
+ * Orquestador de la Fila 1 (adjuntos). Duenio de [AttachMenuState]; la vista
+ * ([AttachStripView]) es pasiva y se re-renderiza por transicion.
  *
- * ── Mecanismo de expansion/colapso (decision de esta implementacion) ──────
+ * ── Modelo de fila FIJA (decision David 2026-08-22, Log de Decisiones:
+ * "＋ / 📷 / 🎤 se separan de AnchorBar") ──────────────────────────────────
  *
- * "Expansion contextual con rendimiento al tipeo":
+ * Reemplaza el mecanismo anterior de franja colapsable con auto-colapso
+ * (timeout 6s / primera tecla), que empujaba la Fila 2 hacia abajo al
+ * expandirse — el bug de UX reportado en captura.
  *
- * 1. COLAPSADA ES EL ESTADO CANONICO: GONE, costo permanente 0dp. La medicion
- *    del spike cerro el tema: una fila fija de 48dp lleva al 53.5% del caso
- *    critico (480x854 hdpi, 569dp utiles), muy arriba del tope del 45%.
- * 2. EXPANSION AUTOMATICA CONTEXTUAL: solo en onStartInputView y SOLO si el
- *    campo anfitrion declara contentMimeTypes compatibles con imagenes
- *    ([ContentCommitPolicy.showsStrip]). En la practica: los composers de los
- *    chats, que es donde adjuntar tiene sentido. Campos de busqueda, URL o
- *    numericos nunca la muestran.
- * 3. COLAPSO AUTOMATICO por cualquiera de estas senales:
- *      - primera tecla del QWERTY hacia el anfitrion ([onKeyboardEvent]):
- *        el vendedor paso a modo texto, la conversacion vuelve a su lugar;
- *      - timeout de inactividad en ROOT (6 s): si no eligio nada, libera;
- *      - ✕ explicito; accion ejecutada; onFinishInputView;
- *      - apertura de Vitrina modo o de la capa ✨ (exclusion mutua, mismos
- *        criterios que entre esas dos superficies).
+ * 1. La fila existe SIEMPRE que el campo anfitrion acepta media
+ *    ([ContentCommitPolicy.showsStrip]) y desaparece solo cuando el campo no
+ *    la acepta o el teclado cierra. Sin timeout y sin rendimiento al tipeo.
+ * 2. El menu (PRINCIPAL/MAS) vive DENTRO del alto fijo de la fila: reemplaza
+ *    su contenido; nunca suma pixeles verticales.
+ * 3. 📷 y 🎤 del extremo derecho son capa visual nuestra, decorativos hoy
+ *    (toast "prximamente"); NO controlan los iconos que WhatsApp dibuja en
+ *    su propio compositor.
  *
- * Alternativas descartadas y por que (para no re-decidir en cada PR):
- *   - Gatillo permanente (chip propio fuera de Franja 2): no hay presupuesto.
- *     Al peor caso le quedan ~16dp libres y un control exige 48dp tactiles.
- *   - Chip ＋ junto a las anclas ☰/✦ (anchor_slot): cero costo de alto, PERO
- *     viola la decision explicita "Franja 2 no se toca".
- *   - Gestos/long-press sobre el QWERTY: indescubribles y rozan la tuberia de
- *     gestos de upstream.
+ * El costo vertical de esta fila es ALTO NUEVO (a diferencia de strip_container,
+ * que ya existia vacio cuando se midio el 2026-08-11). Medido en dispositivo
+ * real el 2026-08-22 — ver commit y reporte; pendiente repetir en gama baja
+ * (caso critico 640dp).
  *
- * LIMITACION CONOCIDA, a decidir por producto despues de probar en dispositivo:
- * colapsada a mitad de sesion, la franja no tiene como reabrirse hasta el
- * proximo cambio de foco (enviar un mensaje cierra el teclado y lo re-dispara;
- * tambien cerrar/abrir el teclado con atras). Acceso persistente exigiria
- * ceder UNA de dos restricciones hoy vigentes: la congelacion de Franja 2 o el
- * presupuesto vertical. Ninguna se cede por iniciativa de este codigo.
- *
- * ── Insercion del adjunto ─────────────────────────────────────────────────
+ * ── Insercion del adjunto (sin cambios respecto al diseno previo) ─────────
  *
  * Camino principal: InputConnection.commitContent — probado contra WhatsApp
- * Business (com.whatsapp.w4b) en el spike: acepta image/png con URI propio de
- * MediaStore y flag 0. Sharesheet SOLO como fallback cuando el editor no
- * declara mimes compatibles o rechaza el commit ([ContentCommitPolicy.route]).
+ * Business (com.whatsapp.w4b): acepta image/png con URI propio de MediaStore.
+ * Sharesheet SOLO como fallback ([ContentCommitPolicy.route]).
  *
- * La camara/fotos/documento necesitan RESULTADO de una activity; un IME no
+ * Camara/fotos/documento necesitan RESULTADO de una activity; un IME no
  * recibe onActivityResult, por eso existe [AttachPickActivity] (trampolin).
  */
 class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
@@ -78,87 +63,58 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     private var franjaHeightPx = 0
 
     private var editorMimes: List<String>? = null
-    private var pendingResult = false
-    private var suppressNextAutoExpand = false
     private var pendingCameraUri: Uri? = null
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var collapseRunnable: Runnable? = null
 
     // ------------------------------------------------------------------
     // Ciclo de vida (llamado desde SalesIME)
     // ------------------------------------------------------------------
 
-    /** Inyecta la franja ENCIMA de strip_container (indice 0 del frame raiz). */
+    /** Inyecta la fila ENCIMA de strip_container (indice 0 del frame raiz). */
     fun onInputView(view: View) {
         val stripContainer = view.findViewById<FrameLayout>(R.id.strip_container) ?: return
         val root = stripContainer.parent as? ViewGroup ?: return
-        val height = view.resources.getDimensionPixelSize(R.dimen.kb_bar_height)
-        // Si el root ya trae franja (vista recreada sobre el mismo arbol), se reusa.
+        // Si el root ya trae fila (vista recreada sobre el mismo arbol), se reusa.
         val existing = root.getChildAt(0) as? AttachStripView
         val strip = existing ?: AttachStripView(view.context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                height,
+                view.resources.getDimensionPixelSize(R.dimen.kb_bar_height),
             )
             visibility = View.GONE
         }
-        franjaHeightPx = height
+        franjaHeightPx = view.resources.getDimensionPixelSize(R.dimen.kb_bar_height)
         strip.callbacks = this
         stripView = strip
         if (existing == null) root.addView(strip, 0)
-        Log.d(TAG, "franja 1 inyectada encima de strip_container (reusada=${existing != null})")
+        Log.d(TAG, "fila 1 inyectada encima de strip_container (reusada=${existing != null})")
     }
 
     fun onFieldFocused(editorInfo: EditorInfo?) {
         editorMimes = editorInfo?.contentMimeTypes?.toList()
-        // Diagnostico en dispositivo (android.util.Log.i directo, no el wrapper
-        // de HeliBoard que gatea Log.d): sin esta linea, un showsStrip=false
-        // es silencioso y la franja "no aparece" sin rastro.
         android.util.Log.i(
             TAG,
             "onFieldFocused pkg=${editorInfo?.packageName} " +
                 "mimes=${editorMimes?.joinToString(prefix = "[", postfix = "]") ?: "null"} " +
-                "muestraFranja=${ContentCommitPolicy.showsStrip(editorMimes)} " +
-                "pendienteResultado=$pendingResult suprimir=$suppressNextAutoExpand",
+                "muestraFila=${ContentCommitPolicy.showsStrip(editorMimes)}",
         )
-        if (pendingResult || suppressNextAutoExpand) {
-            // Volviendo de un picker, o recien se inserto algo: la franja no
-            // se re-abre sola para no titilar justo despues de usarla.
-            pendingResult = false
-            suppressNextAutoExpand = false
-            setState(state.collapse())
-            return
-        }
         val accepts = ContentCommitPolicy.showsStrip(editorMimes)
         setState(state.onFieldFocused(accepts))
     }
 
     fun onFinishInput() {
-        setState(state.collapse())
-    }
-
-    /** Primera tecla del QWERTY hacia el anfitrion: rinde el alto ocupado. */
-    fun onKeyboardEvent() {
-        if (state.isVisible && !pendingResult) setState(state.collapse())
-    }
-
-    /** Exclusion mutua: lo llaman VitrinaHost y AssistantHost al abrir sus superficies. */
-    fun collapse() {
-        setState(state.collapse())
+        setState(state.hide())
     }
 
     /**
-     * Alto extra que la franja agrega sobre el teclado estandar, en px.
-     * 0 si esta colapsada. Lo consume SalesIME.onComputeInsets para corregir
-     * los insets que upstream calcula sin conocer la franja (ver ahi).
+     * Exclusion mutua con las superficies ☰/✨ ya no aplica: la fila es fija,
+     * parte del cromo del teclado (patron Grammarly), convive con ellas.
      */
-    fun expansionInsetPx(): Int =
-        if (state.isVisible && franjaHeightPx > 0) franjaHeightPx else 0
 
     // ------------------------------------------------------------------
-    // Callbacks de la franja
+    // Callbacks de la fila
     // ------------------------------------------------------------------
 
     override fun onPlus() = setState(state.onPlusTapped())
@@ -167,7 +123,8 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
 
     override fun onBack() = setState(state.onBackTapped())
 
-    override fun onDismiss() = setState(state.collapse())
+    /** ✕: cierra el MENU y vuelve al estado de reposo. No oculta la fila. */
+    override fun onCloseMenu() = setState(state.closeMenu())
 
     override fun onLocation() {
         toast(R.string.plus_coming_soon)
@@ -177,12 +134,20 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
         toast(R.string.plus_coming_soon)
     }
 
+    override fun onCameraIcon() {
+        toast(R.string.plus_coming_soon)
+    }
+
+    override fun onMicIcon() {
+        toast(R.string.plus_coming_soon)
+    }
+
     override fun onDocument() {
-        launchPick(AttachPickActivity.WHICH_DOCUMENT, null)
+        beginPick(AttachPickActivity.WHICH_DOCUMENT)
     }
 
     override fun onPhotos() {
-        launchPick(AttachPickActivity.WHICH_PHOTOS, null)
+        beginPick(AttachPickActivity.WHICH_PHOTOS)
     }
 
     override fun onCamera() {
@@ -235,31 +200,26 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     // ------------------------------------------------------------------
 
     /**
-     * Lanza el trampolin SIN colapsar antes: el estado del menu persiste
+     * Lanza el trampolin SIN colapsar nada: el estado del menu persiste
      * durante el ida-y-vuelta (el trampolin cubre la pantalla). En exito,
-     * deliverContent colapsa con supresion del auto-expand; en cancelacion,
-     * reopenMenuAfterCancel restaura PRINCIPAL.
+     * deliverContent vuelve al reposo (ROOT); en cancelacion, la maquina
+     * restaura PRINCIPAL.
      */
-    private fun launchPick(which: String, outputUri: Uri?) {
-        beginPick(which, outputUri)
-    }
-
-    private fun beginPick(which: String, outputUri: Uri?) {
+    private fun beginPick(which: String, outputUri: Uri? = null) {
         val context = ime.applicationContext
-        pendingResult = true
-        AttachPickActivity.setHandler { requestCode, resultCode, data ->
-            onPickResult(requestCode, resultCode, data)
-        }
         val trampoline = Intent(context, AttachPickActivity::class.java).apply {
             putExtra(AttachPickActivity.EXTRA_WHICH, which)
             outputUri?.let { putExtra(AttachPickActivity.EXTRA_OUTPUT_URI, it) }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         }
+        AttachPickActivity.setHandler { requestCode, resultCode, data ->
+            onPickResult(requestCode, resultCode, data)
+        }
         try {
             context.startActivity(trampoline)
         } catch (e: Exception) {
             Log.w(TAG, "trampolin no lanzable: $e")
-            pendingResult = false
+            reopenMenuAfterCancel()
             toast(R.string.plus_action_failed)
         }
     }
@@ -312,7 +272,6 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     }
 
     private fun reopenMenuAfterCancel() {
-        pendingResult = false
         setState(state.onPickCancelled())
     }
 
@@ -332,7 +291,6 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
     // ------------------------------------------------------------------
 
     private fun deliverContent(uri: Uri, imeOwnsUri: Boolean, mime: String) {
-        pendingResult = false
         val mimes = ime.currentInputEditorInfo?.contentMimeTypes?.toList() ?: editorMimes
         val ic = ime.currentInputConnection
         val route = ContentCommitPolicy.route(mimes, mime)
@@ -343,8 +301,7 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
         Log.i(TAG, "adjunto mime=$mime ruta=$route committed=$committed")
 
         if (!committed) shareFallback(uri, mime)
-        suppressNextAutoExpand = true
-        setState(state.collapse())
+        setState(state.closeMenu())
     }
 
     private fun commitContent(
@@ -388,36 +345,28 @@ class AttachHost(private val ime: SalesIME) : AttachStripView.Callbacks {
 
     private fun setState(next: AttachMenuState) {
         if (next.panel == state.panel) return
-        android.util.Log.i(TAG, "franja ${state.panel} -> ${next.panel}")
+        android.util.Log.i(TAG, "fila ${state.panel} -> ${next.panel}")
         state = next
         val strip = stripView ?: return
         strip.render(next.panel)
         strip.visibility = if (next.isVisible) View.VISIBLE else View.GONE
-        rescheduleCollapseTimeout(next)
-    }
-
-    /**
-     * El timeout SOLO corre en ROOT: es el estado "nadie esta eligiendo nada".
-     * Con el menu abierto (PRINCIPAL/MAS) el vendedor esta decidiendo; no se
-     * le cierra el menu mientras lee las opciones.
-     */
-    private fun rescheduleCollapseTimeout(current: AttachMenuState) {
-        collapseRunnable?.let { mainHandler.removeCallbacks(it) }
-        collapseRunnable = null
-        if (current.panel != AttachPanel.ROOT) return
-        val runnable = Runnable {
-            if (state.panel == AttachPanel.ROOT) setState(state.collapse())
-        }
-        collapseRunnable = runnable
-        mainHandler.postDelayed(runnable, COLLAPSE_TIMEOUT_MS)
     }
 
     private fun toast(res: Int) {
         Toast.makeText(ime.applicationContext, res, Toast.LENGTH_SHORT).show()
     }
 
+    /**
+     * Alto extra permanente que la Fila 1 agrega sobre el teclado estandar,
+     * en px; 0 si la fila esta oculta (campo sin media). Lo consume
+     * SalesIME.onComputeInsets para corregir los insets que upstream calcula
+     * sin conocer la fila — misma correccion validada en dispositivo para el
+     * mecanismo colapsable, ahora con condicion de visibilidad fija.
+     */
+    fun expansionInsetPx(): Int =
+        if (state.isVisible && franjaHeightPx > 0) franjaHeightPx else 0
+
     private companion object {
         const val TAG = "AttachPlus"
-        const val COLLAPSE_TIMEOUT_MS = 6_000L
     }
 }

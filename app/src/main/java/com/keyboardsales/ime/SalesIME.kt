@@ -43,10 +43,6 @@ class SalesIME : LatinIME() {
         vitrinaHost = VitrinaHost(this)
         assistantHost = AssistantHost(this, vitrinaHost)
         attachHost = AttachHost(this)
-        // Exclusion mutua de superficies: cuando abre Vitrina modo o la capa ✨,
-        // la franja de adjuntos colapsa (mismo criterio entre ☰ y ✨).
-        vitrinaHost.onSurfaceOpened = { attachHost.collapse() }
-        assistantHost.onSurfaceOpened = { attachHost.collapse() }
         catalogRepository = CatalogRepository(applicationContext)
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
@@ -90,9 +86,6 @@ class SalesIME : LatinIME() {
         } else if (vitrinaHost.isSearchCaptureActive) {
             vitrinaHost.onSearchEvent(event)
         } else {
-            // Tecla hacia el anfitrion: para la franja de adjuntos es la señal
-            // canonica de "el vendedor paso a modo texto" y rinde su alto.
-            attachHost.onKeyboardEvent()
             super.onEvent(event)
         }
     }

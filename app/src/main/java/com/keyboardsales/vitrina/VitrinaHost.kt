@@ -69,11 +69,6 @@ class VitrinaHost(private val ime: SalesIME) {
     private val windowRect = Rect()
     private val maxReadAheadChars = 256
 
-    /**
-     * Exclusion mutua con otras superficies del teclado: lo setea SalesIME
-     * para que la franja de adjuntos (＋) colapse cuando Vitrina modo abre.
-     */
-    var onSurfaceOpened: (() -> Unit)? = null
 
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
@@ -274,8 +269,6 @@ class VitrinaHost(private val ime: SalesIME) {
         val panel = panelView ?: return
         val keyboard = keyboardView ?: return
         val repository = this.repository ?: return
-        // Exclusion mutua con la franja de adjuntos (＋): se cierra antes de abrir.
-        onSurfaceOpened?.invoke()
         exitSearchMode()
         hideBar()
         panel.visibility = View.VISIBLE

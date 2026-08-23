@@ -9,7 +9,11 @@
     <string name="plus_contact">Contacto</string>
     <string name="plus_attach_cd">Abrir adjuntos</string>
     <string name="plus_close_cd">Cerrar adjuntos</string>
+    <string name="plus_close_menu_cd">Cerrar el menú de adjuntos</string>
     <string name="plus_back_cd">Volver al menú de adjuntos</string>
+    <string name="plus_row_camera_cd">Cámara del teclado (próximamente)</string>
+    <string name="plus_mic">Dictar</string>
+    <string name="plus_row_mic_cd">Dictar por voz (próximamente)</string>
     <string name="plus_camera_cd">Adjuntar foto de cámara</string>
     <string name="plus_photos_cd">Adjuntar foto de la galería</string>
     <string name="plus_more_cd">Más opciones para adjuntar</string>

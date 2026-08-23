@@ -5,6 +5,11 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * Semantica de fila FIJA (decision David 2026-08-22): sin auto-colapso, sin
+ * timeout, sin rendimiento al tipeo. La fila existe mientras el campo acepte
+ * media; el menu vive dentro de su alto fijo.
+ */
 class AttachMenuStateTest {
 
     private val oculta = AttachMenuState()
@@ -52,7 +57,7 @@ class AttachMenuStateTest {
     }
 
     @Test
-    fun `mas despliega Documento-Ubicación-Contacto`() {
+    fun `mas despliega Documento-Ubicacion-Contacto`() {
         val estado = oculta.onFieldFocused(true).onPlusTapped().onMoreTapped()
         assertEquals(AttachPanel.MAS, estado.panel)
     }
@@ -65,6 +70,33 @@ class AttachMenuStateTest {
             .onMoreTapped()
             .onBackTapped()
         assertEquals(AttachPanel.PRINCIPAL, estado.panel)
+    }
+
+    // --------------------------------------------------------------
+    // cierre del menu: vuelve a ROOT, la fila permanece (fila fija)
+    // --------------------------------------------------------------
+
+    @Test
+    fun `cerrar menu desde PRINCIPAL vuelve al reposo`() {
+        val estado = oculta.onFieldFocused(true).onPlusTapped().closeMenu()
+        assertEquals(AttachPanel.ROOT, estado.panel)
+        assertTrue(estado.isVisible)
+    }
+
+    @Test
+    fun `cerrar menu desde MAS vuelve al reposo`() {
+        val estado = oculta.onFieldFocused(true).onPlusTapped().onMoreTapped().closeMenu()
+        assertEquals(AttachPanel.ROOT, estado.panel)
+        assertTrue(estado.isVisible)
+    }
+
+    @Test
+    fun `closeMenu sobre ROOT u HIDDEN no hace nada`() {
+        assertEquals(
+            AttachMenuState(AttachPanel.ROOT),
+            AttachMenuState(AttachPanel.ROOT).closeMenu(),
+        )
+        assertEquals(oculta, oculta.closeMenu())
     }
 
     // --------------------------------------------------------------
@@ -100,27 +132,11 @@ class AttachMenuStateTest {
     }
 
     // --------------------------------------------------------------
-    // colapso
-    // --------------------------------------------------------------
-
-    @Test
-    fun `collapse vuelve a HIDDEN desde cualquier estado`() {
-        for (origen in AttachPanel.entries) {
-            assertEquals(AttachPanel.HIDDEN, AttachMenuState(origen).collapse().panel)
-        }
-    }
-
-    @Test
-    fun `collapse sobre oculta es idempotente`() {
-        assertEquals(oculta, oculta.collapse())
-    }
-
-    // --------------------------------------------------------------
     // picker cancelado
     // --------------------------------------------------------------
 
     @Test
-    fun `picker cancelado desde el menu vuelve a principal`() {
+    fun `picker cancelado desde PRINCIPAL vuelve al menu`() {
         val estado = oculta.onFieldFocused(true).onPlusTapped().onPickCancelled()
         assertEquals(AttachPanel.PRINCIPAL, estado.panel)
     }
