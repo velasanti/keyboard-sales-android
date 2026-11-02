@@ -66,8 +66,11 @@ BADGE_SCAN_Y0 = 1100      # solo la mitad inferior (area del teclado)
 # Panel: surface/panel neutral/50 #F7F8FA = (247,248,250).
 PANEL_RGB = (247, 248, 250)
 PANEL_TOL = 6             # diff por canal
-PANEL_SCAN_Y0 = 1400      # desde aqui hacia abajo (fuera de la conversacion)
-PANEL_BOTTOM_ANCHOR = 2380  # el cluster de filas debe llegar cerca del fondo
+# Surface raised: neutral/0 #FFFFFF = (255,255,255) light, neutral/850 dark.
+SURFACE_RAISED_RGB = (255, 255, 255)
+SURFACE_RAISED_TOL = 40    # diff por canal, wider que PANEL_TOL por anti-aliasing, captura tonos gris claro del panel
+PANEL_SCAN_Y0 = 1400     # desde aqui hacia abajo (fuera de la conversacion)
+PANEL_BOTTOM_ANCHOR = 2380     # el cluster de filas debe llegar cerca del fondo
 PANEL_GAP_TOL = 60        # px de tolerancia entre filas de contenido interno
 
 ENTRY_RES = "com.whatsapp.w4b:id/entry"
@@ -129,14 +132,20 @@ def badge_center(img):
 
 def _panel_rows(img):
     w, h = img.size
-    r0, g0, b0 = PANEL_RGB
-    rows = []
+    r0_panel, g0_panel, b0_panel = PANEL_RGB  # (247,248,250) surface_panel
+    r0_raised, g0_raised, b0_raised = SURFACE_RAISED_RGB  # (255,255,255) surface_raised
+    rows_content = []
     for y in range(PANEL_SCAN_Y0, PANEL_BOTTOM_ANCHOR):
         row = [img.getpixel((x, y)) for x in range(0, w, 8)]
-        n = sum(1 for r, g, b in row if abs(r - r0) < PANEL_TOL and abs(g - g0) < PANEL_TOL and abs(b - b0) < PANEL_TOL)
-        if n > len(row) * 0.08:
-            rows.append(y)
-    return rows
+        # Detectar surface_raised: píxeles que coinciden con surface_raised (white)
+        n_raised = sum(1 for r, g, b in row if abs(r - r0_raised) <= SURFACE_RAISED_TOL and abs(g - g0_raised) <= SURFACE_RAISED_TOL and abs(b - b0_raised) <= SURFACE_RAISED_TOL)
+        # Evitar false positive: filas que sean exactamente surface_panel (header)
+        n_panel_exact = sum(1 for r, g, b in row if abs(r - r0_panel) <= PANEL_TOL and abs(g - g0_panel) <= PANEL_TOL and abs(b - b0_panel) <= PANEL_TOL)
+        # Es contenido si tiene píxeles surface_raised Y no es surface_panel exacto
+        is_content = n_raised > len(row) * 0.05 and n_panel_exact < len(row) * 0.02
+        if is_content:
+            rows_content.append(y)
+    return rows_content
 
 
 def panel_bounds(img):
@@ -276,6 +285,13 @@ def last_message_bottom():
     return max(bottoms) if bottoms else None
 
 
+def probe():
+    """Probe for wait_for_pixel: takes screenshot, saves it, returns panel_bounds."""
+    img = screenshot()
+    img.save("/tmp/panel_check.png")
+    return panel_bounds(img)
+
+
 def one_round(round_no, density, trigger):
     print(f"  [ronda {round_no}] limpiando campo y enfocando...")
     clear_entry()
@@ -299,7 +315,7 @@ def one_round(round_no, density, trigger):
     tap(*bb)
 
     t1 = time.time()
-    pb = wait_for_pixel(lambda: panel_bounds(screenshot()))
+    pb = wait_for_pixel(probe)
     t_panel_ms = int((time.time() - t1) * 1000)
     if pb is None:
         raise QaError(f"ronda {round_no}: no se abrio el panel (tap en {bb})")
