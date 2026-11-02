@@ -11,7 +11,6 @@ import android.widget.LinearLayout
 import com.keyboardsales.ime.SalesIME
 import com.keyboardsales.vitrina.bar.BarLayout
 import com.keyboardsales.vitrina.bar.BarMode
-import com.keyboardsales.vitrina.bar.DummyCatalogBadgeView
 import com.keyboardsales.vitrina.bar.VitrinaBarView
 import com.keyboardsales.vitrina.data.CatalogItem
 import com.keyboardsales.vitrina.data.CatalogRepository
@@ -46,10 +45,8 @@ import java.util.concurrent.Executors
 class VitrinaHost(private val ime: SalesIME) {
 
     private var stripContainer: FrameLayout? = null
+    private var stripContent: FrameLayout? = null
     private var keyboardViewWrapper: android.view.ViewGroup? = null
-
-    private var catalogIsDummy = false
-    private var badgeAdded = false
 
     private var repository: CatalogRepository? = null
     private var barView: VitrinaBarView? = null
@@ -72,17 +69,19 @@ class VitrinaHost(private val ime: SalesIME) {
     private val windowRect = Rect()
     private val maxReadAheadChars = 256
 
+
     fun onInputView(view: View) {
         stripContainer = view.findViewById<FrameLayout>(R.id.strip_container)
+        stripContent = view.findViewById<FrameLayout>(R.id.strip_content)
         keyboardViewWrapper = view.findViewById<android.view.ViewGroup>(R.id.keyboard_view_wrapper)
         keyboardView = view.findViewById(R.id.keyboard_view)
         Log.d(TAG, "onInputView: strip=${stripContainer != null}, wrapper=${keyboardViewWrapper != null}")
-        if (stripContainer != null) {
-            suggestionStripView = stripContainer?.findViewById(R.id.suggestion_strip_view)
+        if (stripContent != null) {
+            suggestionStripView = stripContent?.findViewById(R.id.suggestion_strip_view)
             val bar = VitrinaBarView(view.context)
             wireBarCallbacks(bar)
             barView = bar
-            stripContainer?.addView(
+            stripContent?.addView(
                 bar,
                 FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
@@ -91,15 +90,13 @@ class VitrinaHost(private val ime: SalesIME) {
             )
         }
         injectPanel(view)
-        injectAnchor()
-        renderBadge()
     }
 
     /**
      * Vitrina modo: el panel como hijo de keyboard_view_wrapper, con el patron
      * de emoji_palettes_view (hermano del QWERTY que se alterna por visibilidad).
-     * El ancla ☰ NO vive aca: va en strip_container (ver [injectAnchor]) para no
-     * tapar la fila Q-W-E-R-T-Y.
+     * El ancla ☰ NO vive aca: es compartida con ✨ en AssistantHost (04.4 §3),
+     * que llama a [togglePanel] directamente.
      */
     private fun injectPanel(view: View) {
         val wrapper = keyboardViewWrapper ?: return
@@ -114,30 +111,6 @@ class VitrinaHost(private val ime: SalesIME) {
         wirePanelCallbacks(panel)
         panelView = panel
         wrapper.addView(panel)
-    }
-
-    /**
-     * Ancla ☰ en la barra superior (strip_container), arriba del QWERTY
-     * (04.4 §3, 04.10 §2). Nivel B: visual de 40dp (alto de la strip) con area
-     * tactil expandida a 48dp via TouchDelegate; cero cambio al presupuesto
-     * vertical. No vive en keyboard_view_wrapper para no tapar las teclas.
-     */
-    private fun injectAnchor() {
-        val container = stripContainer ?: return
-        val context = container.context
-        val anchor = VitrinaAnchorView(context)
-        anchor.contentDescription = context.getString(R.string.vitrina_anchor_open)
-        val lp = FrameLayout.LayoutParams(
-            context.resources.getDimensionPixelSize(R.dimen.kb_anchor_size),
-            context.resources.getDimensionPixelSize(R.dimen.config_suggestions_strip_height),
-            Gravity.TOP or Gravity.START,
-        ).apply {
-            marginStart = context.resources.getDimensionPixelSize(R.dimen.kb_bar_pad_h)
-        }
-        anchor.setOnClickListener { togglePanel() }
-        anchorView = anchor
-        container.addView(anchor, lp)
-        container.expandTouchTarget(anchor, context.resources.getDimensionPixelSize(R.dimen.size_touch_min))
     }
 
     fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -156,9 +129,7 @@ class VitrinaHost(private val ime: SalesIME) {
     }
 
     fun onCatalogLoaded(esDummy: Boolean) {
-        catalogIsDummy = esDummy
         Log.d(TAG, "onCatalogLoaded(esDummy=$esDummy)")
-        renderBadge()
     }
 
     fun onUpdateSelection(
@@ -397,11 +368,19 @@ class VitrinaHost(private val ime: SalesIME) {
     }
 
     /** El chip de la barra y el ancla comparten la entrada al modo (04.10). */
-    private fun togglePanel() {
+    fun togglePanel() {
         when (PanelToggle.next(panelVisible)) {
             PanelAction.SHOW -> showPanel()
             PanelAction.HIDE -> hidePanel()
         }
+    }
+
+    /** Si el panel de Vitrina modo esta abierto (lo consulta AssistantHost para el ancla ☰). */
+    val isPanelVisible: Boolean get() = panelVisible
+
+    /** Cierra Vitrina modo si esta abierto (exclusion mutua con la capa ✨). */
+    fun closePanel() {
+        hidePanel()
     }
 
     private fun performInsert() {
@@ -516,30 +495,6 @@ class VitrinaHost(private val ime: SalesIME) {
         container.getWindowVisibleDisplayFrame(windowRect)
         val threshold = container.resources.getDimensionPixelSize(R.dimen.kb_bar_expanded_min_height)
         return BarMode.decide(usableHeightPx = windowRect.height(), expandedThresholdPx = threshold)
-    }
-
-    /** Aviso "Catálogo de prueba" mientras el catalogo sea el dummy. */
-    private fun renderBadge() {
-        val container = stripContainer ?: return
-        if (badgeAdded || !catalogIsDummy) return
-        val context = container.context
-        val badge = DummyCatalogBadgeView(context).apply {
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { togglePanel() }
-        }
-        val lp = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END,
-        )
-        val paddingX = context.resources.getDimensionPixelSize(R.dimen.spacing_2)
-        val paddingY = context.resources.getDimensionPixelSize(R.dimen.spacing_1)
-        lp.marginEnd = paddingX
-        lp.topMargin = paddingY
-        container.addView(badge, lp)
-        container.expandTouchTarget(badge, container.resources.getDimensionPixelSize(R.dimen.size_touch_min))
-        badgeAdded = true
     }
 
     companion object {

@@ -129,6 +129,17 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/gesture_data_path"/>
         </provider>
+
+        <!-- keyboard-sales: comparte la cotización en PDF generada en filesDir/quotes/ -->
+        <provider android:name="androidx.core.content.FileProvider"
+            android:authorities="@string/quote_provider_authority"
+            android:enabled="true"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/quote_path"/>
+        </provider>
     </application>
 
     <queries>

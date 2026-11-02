@@ -6,13 +6,16 @@ package com.keyboardsales.vitrina.insert
  */
 object PriceFormatter {
 
-    fun format(amount: Long, moneda: String): String {
+    /** Agrupa miles con punto y antepone "$", sin sufijo de moneda. */
+    fun formatNumber(amount: Long): String {
         val digits = amount.toString()
         val grouped = StringBuilder(digits.length + digits.length / 3)
         for (i in digits.indices) {
             if (i > 0 && (digits.length - i) % 3 == 0) grouped.append('.')
             grouped.append(digits[i])
         }
-        return "$$grouped $moneda"
+        return "$$grouped"
     }
+
+    fun format(amount: Long, moneda: String): String = "${formatNumber(amount)} $moneda"
 }

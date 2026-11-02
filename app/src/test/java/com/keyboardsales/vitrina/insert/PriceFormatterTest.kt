@@ -23,4 +23,11 @@ class PriceFormatterTest {
         assertEquals("$123.456.789 COP", PriceFormatter.format(123_456_789L, "COP"))
         assertEquals("$10.000.000 COP", PriceFormatter.format(10_000_000L, "COP"))
     }
+
+    @Test
+    fun `numero sin sufijo de moneda`() {
+        assertEquals("$1.850.000", PriceFormatter.formatNumber(1_850_000L))
+        assertEquals("$295.000", PriceFormatter.formatNumber(295_000L))
+        assertEquals("$0", PriceFormatter.formatNumber(0L))
+    }
 }

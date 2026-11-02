@@ -283,17 +283,18 @@ teclado de proposito general y expone nuestro roadmap.
 
 ## Excepciones a la regla de diff aditivo
 
-La regla madre del fork es que **todo lo nuestro es aditivo**: archivos nuevos, nunca ediciones a archivos de upstream. Hay exactamente tres excepciones, y estan aca para que aparezcan como decisiones y no como sorpresas en el proximo rebase.
+La regla madre del fork es que **todo lo nuestro es aditivo**: archivos nuevos, nunca ediciones a archivos de upstream. Hay exactamente cuatro excepciones, y estan aca para que aparezcan como decisiones y no como sorpresas en el proximo rebase.
 
 | Archivo de upstream | Que hacemos | Al rebasear |
 |---|---|---|
 | `README.md` | Lo reemplazamos entero. Es la puerta de entrada de *nuestro* repo y tiene que decir que es un fork con otro proposito, con nuestras metas de peso y nuestro pipeline de tokens | **Siempre tomar la nuestra.** `git checkout --ours README.md` |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Lo reemplazamos entero. El nuestro tiene la casilla obligatoria de "este PR toca el motor de sugerencias", que es el control que mantiene el fork mantenible | **Siempre tomar la nuestra.** `git checkout --ours .github/PULL_REQUEST_TEMPLATE.md` |
 | `.gitignore` | Lo **extendemos**, no lo reemplazamos: el de upstream ignora cosas de Gradle y del NDK que el nuestro no cubre. Nuestro bloque va al final, detras del separador `# ── Keyboard Sales AI ──` | **Fusionar**: tomar el de upstream y re-agregar nuestro bloque |
+| `app/src/main/res/layout/strip_container.xml` | Le agregamos una fila horizontal interna con `anchor_slot` (espacio dedicado a las anclas ☰/✨) y `strip_content` (todo lo demas: sugerencias, emoji, clipboard, chips y capa ✨). La raiz sigue siendo un `FrameLayout` con el mismo id `strip_container`, asi que `KeyboardSwitcher` no se toca. Es la unica forma de que las anclas tengan espacio propio sin que el texto de sugerencias quede detras/debajo: un margen en runtime se pierde en cada camino de codigo que reasigna `suggestion.layoutParams`. | **Fusionar cuidando la raiz**: si upstream cambia los hijos de `strip_container`, re-insertar la fila `anchor_slot`+`strip_content` por encima, sin tocar el id de la raiz |
 
 > **Ojo con las mayusculas de `PULL_REQUEST_TEMPLATE.md`.** Upstream lo tiene en mayusculas. Si se crea la variante en minusculas, en macOS (case-insensitive) los dos son el mismo archivo y parece funcionar, pero en el runner de Linux del CI existen **los dos** y GitHub elige cualquiera. Usar siempre la grafia exacta de upstream.
 
-Cualquier cuarta excepcion necesita justificacion explicita en el PR. Si la lista crece, el fork esta divergiendo y se pierde la unica razon de haber forkeado.
+Cualquier quinta excepcion necesita justificacion explicita en el PR. Si la lista crece, el fork esta divergiendo y se pierde la unica razon de haber forkeado.
 
 ## Que regenerar despues de cada rebase
 
@@ -339,7 +340,7 @@ Generarlo con el repo todavia 100% upstream, commitearlo, y **sacar el `continue
 
 ### 3. El workflow `build-test-auto.yml` de upstream se conserva
 
-No lo borramos: seria una cuarta excepcion a la regla de diff aditivo y agrega friccion en cada rebase. Va a aparecer en rojo en los PRs por el motivo del punto 1. **No incluirlo en los checks requeridos de la proteccion de rama.**
+No lo borramos: seria una quinta excepcion a la regla de diff aditivo y agrega friccion en cada rebase. Va a aparecer en rojo en los PRs por el motivo del punto 1. **No incluirlo en los checks requeridos de la proteccion de rama.**
 
 ## Que regenerar despues de cada rebase — lista completa
 

@@ -4,11 +4,14 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import com.keyboardsales.assistant.AssistantHost
 import com.keyboardsales.vitrina.VitrinaHost
 import com.keyboardsales.vitrina.data.CatalogLoader
 import com.keyboardsales.vitrina.data.CatalogRepository
 import helium314.keyboard.event.Event
+import helium314.keyboard.latin.BuildConfig
 import helium314.keyboard.latin.LatinIME
+import helium314.keyboard.latin.R
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -24,6 +27,7 @@ import java.util.concurrent.Executors
 class SalesIME : LatinIME() {
 
     private lateinit var vitrinaHost: VitrinaHost
+    private lateinit var assistantHost: AssistantHost
     private lateinit var catalogRepository: CatalogRepository
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -31,7 +35,9 @@ class SalesIME : LatinIME() {
 
     override fun onCreate() {
         super.onCreate()
+        android.util.Log.i("BuildInfo", "commit=${BuildConfig.BUILD_COMMIT} rama=${BuildConfig.BUILD_BRANCH}")
         vitrinaHost = VitrinaHost(this)
+        assistantHost = AssistantHost(this, vitrinaHost)
         catalogRepository = CatalogRepository(applicationContext)
         executor.execute {
             CatalogLoader.seedIfEmpty(applicationContext, catalogRepository)
@@ -55,16 +61,23 @@ class SalesIME : LatinIME() {
     override fun setInputView(view: View) {
         super.setInputView(view)
         vitrinaHost.onInputView(view)
+        assistantHost.onInputView(view)
     }
 
+
     /**
-     * Captura del QWERTY hacia la lupa de Vitrina modo (mismo mecanismo que la
-     * capa ✨): cuando la lupa esta enfocada, las teclas escriben al campo de
-     * busqueda y NUNCA al campo de la app anfitriona. El motor no se toca; solo
-     * no se le alimenta input mientras la lupa compone.
+     * Captura del QWERTY hacia ✨ o hacia la lupa de Vitrina modo, exclusiva
+     * entre si (mismo mecanismo en los dos casos): mientras cualquiera de las
+     * dos este activa, las teclas escriben a su cuadro propio y NUNCA al campo
+     * de la app anfitriona. El motor no se toca, solo no se le alimenta input
+     * mientras una de las dos compone (04.10 §9.6.2). ✨ tiene prioridad porque
+     * las dos superficies ya se cierran mutuamente al abrirse (VitrinaHost.closePanel()
+     * / AssistantHost), asi que en la practica solo una puede estar activa a la vez.
      */
     override fun onEvent(event: Event) {
-        if (vitrinaHost.isSearchCaptureActive) {
+        if (assistantHost.isCaptureActive) {
+            assistantHost.onAssistantEvent(event)
+        } else if (vitrinaHost.isSearchCaptureActive) {
             vitrinaHost.onSearchEvent(event)
         } else {
             super.onEvent(event)
@@ -74,11 +87,13 @@ class SalesIME : LatinIME() {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         vitrinaHost.onStartInputView(editorInfo, restarting)
+        assistantHost.resetToIdle()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         vitrinaHost.onFinishInputView(finishingInput)
+        assistantHost.resetToIdle()
     }
 
     override fun onUpdateSelection(
